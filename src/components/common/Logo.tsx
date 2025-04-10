@@ -1,4 +1,10 @@
 import React from 'react';
+
+// Import the logo images directly
+import logoBlue from '/public/Logo_Equal_Parts_%28Split%29--Blue.png';
+import logoWhite from '/public/Logo_Equal_Parts_%28Split%29--White.png';
+import logoBlack from '/public/Logo_Equal_Parts_%28Split%29--Black.png';
+
 interface LogoProps {
   variant?: 'blue' | 'white' | 'black';
   className?: string;
@@ -12,9 +18,9 @@ export const Logo: React.FC<LogoProps> = ({
   alt = 'Equal Parts Logo'
 }) => {
   const logoUrl = {
-    blue: "./Logo_Equal_Parts_%28Split%29--Blue.png",
-    white: "./Logo_Equal_Parts_%28Split%29--White.png",
-    black: "./Logo_Equal_Parts_%28Split%29--Black.png"
+    blue: logoBlue,
+    white: logoWhite,
+    black: logoBlack
   };
   const sizeClasses = {
     sm: 'h-6',

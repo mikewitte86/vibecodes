@@ -12,9 +12,9 @@ export const Logo: React.FC<LogoProps> = ({
   alt = 'Equal Parts Logo'
 }) => {
   const logoUrl = {
-    blue: "/Logo_Equal_Parts_%28Split%29--Blue.png",
-    white: "/Logo_Equal_Parts_%28Split%29--White.png",
-    black: "/Logo_Equal_Parts_%28Split%29--Black.png"
+    blue: "./Logo_Equal_Parts_%28Split%29--Blue.png",
+    white: "./Logo_Equal_Parts_%28Split%29--White.png",
+    black: "./Logo_Equal_Parts_%28Split%29--Black.png"
   };
   const sizeClasses = {
     sm: 'h-6',

@@ -6,6 +6,10 @@
              - npm ci
          build:
            commands:
+             - echo "VITE_AWS_REGION=$AWS_REGION" >> .env
+             - echo "VITE_COGNITO_USER_POOL_ID=$COGNITO_USER_POOL_ID" >> .env
+             - echo "VITE_COGNITO_CLIENT_ID=$COGNITO_CLIENT_ID" >> .env
+             - echo "VITE_API_URL=$API_URL" >> .env
              - npm run build
        artifacts:
          baseDirectory: dist

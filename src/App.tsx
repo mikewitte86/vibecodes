@@ -9,7 +9,6 @@ import { Invoices } from './components/outputs/Invoices';
 import { NewPolicy } from './components/inputs/NewPolicy';
 import { NewContact } from './components/inputs/NewContact';
 import { TaskBoard } from './components/tasks/TaskBoard';
-import { mockTasks, mockCompanies } from './components/data/mockData';
 import { PolicyView } from './components/views/PolicyView';
 import { ContactView } from './components/views/ContactView';
 import { PoliciesList } from './components/outputs/PoliciesList';
@@ -18,10 +17,30 @@ import { UsersList } from './components/admin/UsersList';
 import { RoleManagement } from './components/admin/RoleManagement';
 import { SearchProvider } from './components/search/SearchContext';
 import { GlobalSearch } from './components/search/GlobalSearch';
+import { AuthProvider } from './contexts/AuthContext';
+import { ProtectedRoute } from './components/auth/ProtectedRoute';
+
+// Define type for dashboard props
+interface DashboardProps {
+  onTaskFilterClick: (filter: { status: string; priority: string }) => void;
+  onActivityClick?: (type: string, id: number) => void;
+  onNavigate?: (section: string, view: string) => void;
+}
+
+// Define a type for company
+interface Company {
+  id: number;
+  name: string;
+  activePolicies: number;
+  premium: string;
+  revenue: string;
+  hubspotUrl: string;
+}
+
 export function App() {
   const [currentView, setCurrentView] = useState('dashboard');
   const [currentSection, setCurrentSection] = useState('outputs');
-  const [selectedCompany, setSelectedCompany] = useState(null);
+  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [taskFilter, setTaskFilter] = useState({
     status: 'all',
     priority: 'all'
@@ -32,6 +51,7 @@ export function App() {
   } | null>(null);
   const [selectedPolicy, setSelectedPolicy] = useState<number | null>(null);
   const [previousView, setPreviousView] = useState<string>('dashboard');
+  
   const handleTaskFilterClick = (filter: {
     status: string;
     priority: string;
@@ -40,6 +60,7 @@ export function App() {
     setCurrentSection('tasks');
     setCurrentView('tasks');
   };
+  
   const handleActivityClick = (type: string, id: number) => {
     setSelectedActivity({
       type,
@@ -47,6 +68,7 @@ export function App() {
     });
     setCurrentView('activityDetail');
   };
+  
   const handlePolicyClick = (policyId: number) => {
     setPreviousView(currentView);
     setSelectedPolicy(policyId);
@@ -56,20 +78,24 @@ export function App() {
       id: policyId
     });
   };
+  
   const handleBackFromPolicy = () => {
     setCurrentView(previousView);
     setSelectedPolicy(null);
     setSelectedActivity(null);
   };
+  
   const handleDashboardNavigate = (section: string, view: string) => {
     setCurrentSection(section);
     setCurrentView(view);
   };
+  
   const handleNewBusinessCompanyClick = (company: {
     id: number;
     name: string;
   }) => {
-    const companyData = {
+    // Create a complete Company object from the minimal data we have
+    const companyData: Company = {
       id: company.id,
       name: company.name,
       activePolicies: 0,
@@ -81,10 +107,15 @@ export function App() {
     setPreviousView(currentView);
     setCurrentView('companyProfile');
   };
+
   const renderContent = () => {
     switch (currentView) {
       case 'dashboard':
-        return <Dashboard onTaskFilterClick={handleTaskFilterClick} onActivityClick={handleActivityClick} onNavigate={handleDashboardNavigate} />;
+        return <Dashboard 
+          onTaskFilterClick={handleTaskFilterClick}
+          onActivityClick={handleActivityClick}
+          onNavigate={handleDashboardNavigate}
+        />;
       case 'activityDetail':
         if (!selectedActivity) return null;
         switch (selectedActivity.type) {
@@ -100,7 +131,7 @@ export function App() {
             return null;
         }
       case 'companies':
-        return <CompanyList onSelectCompany={company => {
+        return <CompanyList onSelectCompany={(company: Company) => {
           setSelectedCompany(company);
           setCurrentView('companyProfile');
         }} />;
@@ -125,14 +156,27 @@ export function App() {
       case 'roleManagement':
         return <RoleManagement />;
       default:
-        return <Dashboard onTaskFilterClick={handleTaskFilterClick} />;
+        return <Dashboard 
+          onTaskFilterClick={handleTaskFilterClick}
+          onActivityClick={handleActivityClick}
+          onNavigate={handleDashboardNavigate}
+        />;
     }
   };
-  return <SearchProvider>
-      <Layout currentSection={currentSection} setCurrentSection={setCurrentSection} currentView={currentView} setCurrentView={setCurrentView}>
-        {renderContent()}
-        <ChatBubble />
-        <GlobalSearch />
-      </Layout>
-    </SearchProvider>;
+
+  return (
+    <AuthProvider>
+      <SearchProvider>
+        <div className="min-h-screen flex flex-col">
+          <ProtectedRoute>
+            <Layout currentSection={currentSection} setCurrentSection={setCurrentSection} currentView={currentView} setCurrentView={setCurrentView}>
+              {renderContent()}
+              <ChatBubble />
+              <GlobalSearch />
+            </Layout>
+          </ProtectedRoute>
+        </div>
+      </SearchProvider>
+    </AuthProvider>
+  );
 }

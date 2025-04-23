@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { ShieldIcon, BarChart2Icon, CheckSquareIcon, HomeIcon, UsersIcon, RefreshCcwIcon, TrendingUpIcon, FileTextIcon, ChevronLeftIcon, ChevronRightIcon, MenuIcon } from 'lucide-react';
 import { Logo } from './common/Logo';
 import { GlobalSearchBar } from './common/GlobalSearchBar';
+import { UserProfileButton } from './auth/UserProfileButton';
+
 interface LayoutProps {
   children: React.ReactNode;
   currentSection: string;
@@ -9,6 +11,7 @@ interface LayoutProps {
   currentView: string;
   setCurrentView: (view: string) => void;
 }
+
 export const Layout: React.FC<LayoutProps> = ({
   children,
   currentSection,
@@ -17,10 +20,12 @@ export const Layout: React.FC<LayoutProps> = ({
   setCurrentView
 }) => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
   const handleNavigation = (section: string, view: string) => {
     setCurrentSection(section);
     setCurrentView(view);
   };
+
   const navItems = [{
     section: 'outputs',
     title: 'Data Outputs',
@@ -82,6 +87,7 @@ export const Layout: React.FC<LayoutProps> = ({
       view: 'roleManagement'
     }]
   }];
+
   return <div className="min-h-screen bg-gray-50">
       <aside className={`${isSidebarCollapsed ? 'w-16' : 'w-64'} fixed left-0 top-0 h-screen bg-[#0F172A] transition-all duration-300 ease-in-out z-20`}>
         <div className={`h-16 flex items-center border-b border-gray-800 ${isSidebarCollapsed ? 'justify-center px-4' : 'justify-between px-4'}`}>
@@ -124,7 +130,7 @@ export const Layout: React.FC<LayoutProps> = ({
                 <GlobalSearchBar />
               </div>
               <div className="flex items-center space-x-4">
-                {/* Add any header actions/profile menu here */}
+                <UserProfileButton />
               </div>
             </div>
           </div>

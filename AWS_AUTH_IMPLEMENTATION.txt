@@ -1,0 +1,2445 @@
+# AWS Cognito and Lambda Authorizer Implementation Guide
+
+## Table of Contents
+
+1. [Introduction](#introduction)
+2. [Architecture Overview](#architecture-overview)
+3. [Cognito User Pool Setup](#cognito-user-pool-setup)
+4. [Lambda Authorizer Implementation](#lambda-authorizer-implementation)
+5. [API Gateway Configuration](#api-gateway-configuration)
+6. [Frontend Integration](#frontend-integration)
+7. [Backend Service Integration](#backend-service-integration)
+8. [Multi-Tenant Data Scoping](#multi-tenant-data-scoping)
+9. [User and Role Management](#user-and-role-management)
+10. [Testing and Troubleshooting](#testing-and-troubleshooting)
+
+## Introduction
+
+This guide outlines how to implement an authentication and authorization system using AWS Cognito and Lambda authorizers. The system is designed to maintain a clear separation of concerns between the frontend application and backend services, allowing for secure and scalable user management, role-based access control (RBAC), and multi-tenant data scoping.
+
+Key benefits of this approach:
+- Centralized user management with AWS Cognito
+- Fine-grained access control using Lambda authorizers
+- Secure token-based authentication
+- Simplified frontend implementation
+- Backend services remain agnostic to the authentication mechanism
+- Support for multi-tenancy and data isolation
+
+## Architecture Overview
+
+The authentication and authorization system consists of several components working together:
+
+```
+                                   ┌─────────────────┐
+                                   │                 │
+                                   │  AWS Cognito    │
+                                   │   User Pool     │
+                                   │                 │
+                                   └─────────┬───────┘
+                                             │
+                                             │ ID/Access Tokens
+                                             ▼
+┌─────────────────┐                ┌─────────────────┐          ┌─────────────────┐
+│                 │  Auth Request  │                 │          │                 │
+│  React Frontend ├───────────────►│  API Gateway    │◄─────────┤  Lambda         │
+│  Application    │                │                 │ Authorize│  Authorizer     │
+│                 │◄───────────────┤                 │──────────┤                 │
+└─────────────────┘    Response    └────────┬────────┘          └─────────────────┘
+                                   │        │
+                                   │        │ Authorized Request
+                                   │        │ (with user context)
+                                   │        ▼
+                                   │ ┌─────────────────┐
+                                   │ │                 │
+                                   │ │  Lambda         │
+                                   │ │  Backend        │
+                                   │ │  Services       │
+                                   │ │                 │
+                                   │ └─────────────────┘
+                                   │        │
+                                   │        │ Scoped Data Access
+                                   │        ▼
+                                   │ ┌─────────────────┐
+                                   │ │                 │
+                                   │ │  Data Stores    │
+                                   │ │  (DynamoDB,     │
+                                   │ │  RDS, etc.)     │
+                                   │ │                 │
+                                   │ └─────────────────┘
+```
+
+### Authentication Flow
+
+1. **User Login**: The user logs in through the React frontend, which communicates with Cognito User Pool.
+2. **Token Generation**: Upon successful authentication, Cognito issues JWT tokens (ID token, access token).
+3. **API Request**: The frontend includes the JWT token in the Authorization header for API requests.
+4. **Token Verification**: The Lambda authorizer validates the token and extracts user information.
+5. **Authorization**: The Lambda authorizer checks the user's permissions/scopes and generates an IAM policy.
+6. **Context Passing**: User context (tenant ID, scopes, etc.) is passed to backend services.
+7. **Scoped Data Access**: Backend services use the user context to apply data access controls.
+
+### Key Components
+
+1. **Cognito User Pool**:
+   - Manages user registration, authentication, and user attributes
+   - Stores user roles and permissions as custom attributes
+   - Issues JWT tokens containing user identity and scopes
+
+2. **Lambda Authorizer**:
+   - Validates JWT tokens from Cognito
+   - Extracts user context, roles, and scopes
+   - Generates IAM policies for API access
+   - Passes user context to backend services
+
+3. **API Gateway**:
+   - Secures APIs using the Lambda authorizer
+   - Routes requests to appropriate backend services
+   - Caches authorization results for improved performance
+
+4. **Backend Services**:
+   - Receive and use the user context for authorization decisions
+   - Apply data filtering based on tenant ID and user roles
+   - May acquire additional credentials for subsystems based on scope
+
+5. **Frontend Application**:
+   - Implements login/logout functionality using Cognito
+   - Securely stores and refreshes tokens
+   - Includes tokens in API requests
+   - Adapts UI based on user permissions
+
+## Cognito User Pool Setup
+
+This section details how to set up an AWS Cognito User Pool with the necessary configuration for role-based access control.
+
+### 1. Create a User Pool
+
+#### Using AWS Console:
+
+1. Navigate to the AWS Cognito Console
+2. Click "Create user pool"
+3. Choose "Cognito user pool" as the authentication provider
+4. Configure sign-in options:
+   - Enable "Email" and "Username"
+   - If needed, enable "Phone number"
+
+5. Configure security requirements:
+   - Password policy: Set minimum length (8+ recommended)
+   - Enable multi-factor authentication (MFA) if needed
+   - Configure account recovery options
+
+6. Configure sign-up experience:
+   - Required attributes: email, name
+   - Optional attributes: phone_number, preferred_username
+
+7. Configure message delivery:
+   - Set up email via Amazon SES (recommended for production)
+
+8. Integrate your app:
+   - Create an app client
+   - Disable client secret for JavaScript applications
+   - Configure callback URLs, sign-out URLs
+   - Enable Auth flows: ALLOW_USER_PASSWORD_AUTH, ALLOW_REFRESH_TOKEN_AUTH
+
+9. Review and create the user pool
+
+#### Using AWS CLI:
+
+```bash
+# Create the user pool
+aws cognito-idp create-user-pool \
+  --pool-name "YourAppUserPool" \
+  --auto-verified-attributes email \
+  --username-attributes email \
+  --mfa-configuration OFF \
+  --policies '{
+    "PasswordPolicy": {
+      "MinimumLength": 8,
+      "RequireUppercase": true,
+      "RequireLowercase": true,
+      "RequireNumbers": true,
+      "RequireSymbols": false
+    }
+  }'
+
+# Create app client
+aws cognito-idp create-user-pool-client \
+  --user-pool-id YOUR_USER_POOL_ID \
+  --client-name "YourAppClient" \
+  --no-generate-secret \
+  --explicit-auth-flows ALLOW_USER_SRP_AUTH ALLOW_REFRESH_TOKEN_AUTH ALLOW_USER_PASSWORD_AUTH \
+  --callback-urls "https://your-app-domain.com/callback" \
+  --allowed-o-auth-flows code implicit \
+  --allowed-o-auth-scopes phone email openid profile aws.cognito.signin.user.admin \
+  --supported-identity-providers COGNITO
+```
+
+### 2. Create Custom Attributes for RBAC
+
+Custom attributes in Cognito will store user roles, permissions, and tenant IDs.
+
+#### Using AWS Console:
+
+1. Go to the User Pool > "User pool properties" > "Schema"
+2. Add custom attributes:
+   - `custom:role` (String): User's primary role (e.g., "Admin", "Manager", "User")
+   - `custom:tenantId` (String): User's tenant identifier for multi-tenancy
+   - `custom:permissions` (String): Comma-separated list of permissions or JSON string
+   - `custom:scopes` (String): Space-separated OAuth-style scopes (e.g., "users:read users:write")
+
+#### Using AWS CLI:
+
+```bash
+# Add custom attributes
+aws cognito-idp add-custom-attributes \
+  --user-pool-id YOUR_USER_POOL_ID \
+  --custom-attributes \
+  '[
+    {
+      "Name": "role",
+      "AttributeDataType": "String",
+      "Mutable": true,
+      "DeveloperOnlyAttribute": false
+    },
+    {
+      "Name": "tenantId",
+      "AttributeDataType": "String",
+      "Mutable": true,
+      "DeveloperOnlyAttribute": false
+    },
+    {
+      "Name": "permissions",
+      "AttributeDataType": "String",
+      "Mutable": true,
+      "DeveloperOnlyAttribute": false,
+      "StringAttributeConstraints": {
+        "MaxLength": "2048"
+      }
+    },
+    {
+      "Name": "scopes",
+      "AttributeDataType": "String",
+      "Mutable": true,
+      "DeveloperOnlyAttribute": false,
+      "StringAttributeConstraints": {
+        "MaxLength": "1024"
+      }
+    }
+  ]'
+```
+
+### 3. Set Up Pre-Token Generation Lambda Trigger
+
+To include custom attributes in the JWT tokens, we need to create a Lambda trigger:
+
+1. Create a new Lambda function:
+
+```javascript
+// pre-token-generation-lambda.js
+exports.handler = async (event, context) => {
+  // Get user attributes
+  const { userAttributes } = event.request;
+  
+  // Set up claims to be added to tokens
+  const claims = {};
+  
+  // Add tenant ID if it exists
+  if (userAttributes['custom:tenantId']) {
+    claims['tenantId'] = userAttributes['custom:tenantId'];
+  }
+  
+  // Add role if it exists
+  if (userAttributes['custom:role']) {
+    claims['role'] = userAttributes['custom:role'];
+  }
+  
+  // Add scopes as a space-separated string
+  if (userAttributes['custom:scopes']) {
+    claims['scope'] = userAttributes['custom:scopes'];
+  }
+  
+  // Add permissions if they exist (as JSON string)
+  if (userAttributes['custom:permissions']) {
+    try {
+      // If permissions are stored as JSON, parse them
+      const permissions = JSON.parse(userAttributes['custom:permissions']);
+      claims['permissions'] = permissions;
+    } catch (e) {
+      // If not JSON, just add as string
+      claims['permissions'] = userAttributes['custom:permissions'];
+    }
+  }
+  
+  // Add the claims to the ID token
+  event.response = {
+    claimsOverrideDetails: {
+      idTokenGeneration: {
+        claims: claims
+      },
+      accessTokenGeneration: {
+        claims: claims
+      }
+    }
+  };
+  
+  return event;
+};
+```
+
+2. Configure Lambda trigger in Cognito:
+
+#### Using AWS Console:
+
+1. Go to your User Pool > "User pool properties"
+2. Under "Lambda triggers", find "Pre token generation" and add your Lambda function
+
+#### Using AWS CLI:
+
+```bash
+aws cognito-idp update-user-pool \
+  --user-pool-id YOUR_USER_POOL_ID \
+  --lambda-config '{
+    "PreTokenGeneration": "arn:aws:lambda:REGION:ACCOUNT_ID:function:pre-token-generation-lambda"
+  }'
+```
+
+### 4. Set Up Admin User Creation Script
+
+Create an admin script to create users with specific roles and permissions:
+
+```javascript
+// create-admin-user.js
+const AWS = require('aws-sdk');
+const cognito = new AWS.CognitoIdentityServiceProvider();
+
+async function createAdminUser(email, password, name) {
+  // Create user in Cognito
+  await cognito.adminCreateUser({
+    UserPoolId: 'YOUR_USER_POOL_ID',
+    Username: email,
+    TemporaryPassword: password,
+    MessageAction: 'SUPPRESS', // Don't send invitation email
+    UserAttributes: [
+      { Name: 'email', Value: email },
+      { Name: 'email_verified', Value: 'true' },
+      { Name: 'name', Value: name },
+      { Name: 'custom:role', Value: 'Admin' },
+      { Name: 'custom:scopes', Value: 'users:read users:write reports:read reports:write settings:read settings:write' },
+      { Name: 'custom:permissions', Value: JSON.stringify({
+        users: ['create', 'read', 'update', 'delete'],
+        reports: ['create', 'read', 'export'],
+        settings: ['read', 'update']
+      }) }
+    ]
+  }).promise();
+  
+  // Set permanent password
+  await cognito.adminSetUserPassword({
+    UserPoolId: 'YOUR_USER_POOL_ID',
+    Username: email,
+    Password: password,
+    Permanent: true
+  }).promise();
+  
+  console.log(`Admin user ${email} created successfully`);
+}
+
+// Example usage
+createAdminUser('admin@example.com', 'StrongPassword123!', 'Admin User')
+  .catch(console.error);
+```
+
+### 5. Create Default User Groups
+
+User groups in Cognito can represent roles with predefined permissions:
+
+#### Using AWS Console:
+
+1. Go to your User Pool > "Groups"
+2. Click "Create group"
+3. Define groups like "Admins", "Managers", "Users", etc.
+4. Assign IAM roles if needed (optional)
+
+#### Using AWS CLI:
+
+```bash
+# Create admin group
+aws cognito-idp create-group \
+  --user-pool-id YOUR_USER_POOL_ID \
+  --group-name "Admins" \
+  --description "Administrator users with full access"
+
+# Create manager group  
+aws cognito-idp create-group \
+  --user-pool-id YOUR_USER_POOL_ID \
+  --group-name "Managers" \
+  --description "Manager users with limited admin access"
+
+# Create standard users group
+aws cognito-idp create-group \
+  --user-pool-id YOUR_USER_POOL_ID \
+  --group-name "Users" \
+  --description "Standard users with basic access"
+```
+
+### 6. Set Up Domain for Hosted UI (Optional)
+
+If you want to use Cognito's hosted UI for authentication:
+
+#### Using AWS Console:
+
+1. Go to your User Pool > "App integration" > "Domain"
+2. Choose either an Amazon Cognito domain or your own custom domain
+3. Configure domain name and certificate (for custom domains)
+
+#### Using AWS CLI:
+
+```bash
+# Create Cognito domain
+aws cognito-idp create-user-pool-domain \
+  --user-pool-id YOUR_USER_POOL_ID \
+  --domain "your-app-name"
+```
+
+### 7. Configure Identity Pool (Optional)
+
+If you need AWS credentials for authenticated users:
+
+#### Using AWS Console:
+
+1. Go to "Federated identities" in Cognito
+2. Create a new identity pool
+3. Configure authentication providers, linking to your User Pool
+4. Set up IAM roles for authenticated and unauthenticated users
+
+#### Using AWS CLI:
+
+```bash
+# Create identity pool
+aws cognito-identity create-identity-pool \
+  --identity-pool-name "YourAppIdentityPool" \
+  --allow-unauthenticated-identities \
+  --cognito-identity-providers ProviderName=cognito-idp.REGION.amazonaws.com/YOUR_USER_POOL_ID,ClientId=YOUR_CLIENT_ID,ServerSideTokenCheck=true
+```
+
+Now you have a fully configured Cognito User Pool with custom attributes for RBAC, appropriate triggers, and user management capabilities. The next section will focus on implementing the Lambda authorizer to work with this User Pool.
+
+## Lambda Authorizer Implementation
+
+The Lambda authorizer is a key component that validates JWT tokens from Cognito, determines permissions, and passes user context to backend services.
+
+### 1. Setting Up the Lambda Authorizer
+
+First, create a new Lambda function that will serve as the authorizer:
+
+```javascript
+// lambda-authorizer.js
+const jwt = require('jsonwebtoken');
+const jwksClient = require('jwks-rsa');
+const util = require('util');
+
+// Configure the JWKS client for your Cognito User Pool
+const client = jwksClient({
+  jwksUri: `https://cognito-idp.${process.env.REGION}.amazonaws.com/${process.env.USER_POOL_ID}/.well-known/jwks.json`
+});
+
+// Function to get the signing key
+const getSigningKey = util.promisify((kid, callback) => {
+  client.getSigningKey(kid, (err, key) => {
+    if (err) {
+      return callback(err);
+    }
+    const signingKey = key.publicKey || key.rsaPublicKey;
+    callback(null, signingKey);
+  });
+});
+
+// Resource mapping for permission checks
+const resourcePermissionMap = {
+  '/users': {
+    'GET': 'users:read',
+    'POST': 'users:write',
+    'PUT': 'users:write',
+    'DELETE': 'users:write'
+  },
+  '/reports': {
+    'GET': 'reports:read',
+    'POST': 'reports:write'
+  },
+  // Add more resource mappings as needed
+};
+
+// Function to check if a user has the required scopes
+const hasRequiredScope = (userScopes, requiredScope) => {
+  if (!requiredScope) return true;
+  if (!userScopes) return false;
+  
+  const scopeArray = userScopes.split(' ');
+  return scopeArray.includes(requiredScope);
+};
+
+// Main handler function
+exports.handler = async (event) => {
+  try {
+    // Extract token from the Authorization header
+    const token = event.authorizationToken.replace('Bearer ', '');
+    
+    // Get the API methodArn (resource being accessed)
+    const methodArn = event.methodArn;
+    
+    // Parse the method ARN to extract API Gateway details
+    const arnParts = methodArn.split(':');
+    const apiGatewayArnParts = arnParts[5].split('/');
+    const resource = '/' + apiGatewayArnParts[3]; // e.g., /users
+    const httpMethod = apiGatewayArnParts[2]; // e.g., GET
+    
+    // Determine required scope based on resource and method
+    const requiredScope = resourcePermissionMap[resource]?.[httpMethod] || null;
+    
+    // Decode the token (without verification) to get the kid (Key ID)
+    const decodedToken = jwt.decode(token, { complete: true });
+    if (!decodedToken) {
+      throw new Error('Invalid token');
+    }
+    
+    // Get the Key ID from the token header
+    const kid = decodedToken.header.kid;
+    
+    // Get the signing key
+    const signingKey = await getSigningKey(kid);
+    
+    // Verify the token
+    const verifiedToken = jwt.verify(token, signingKey, { 
+      algorithms: ['RS256'],
+      issuer: `https://cognito-idp.${process.env.REGION}.amazonaws.com/${process.env.USER_POOL_ID}`
+    });
+    
+    // Extract user info from token
+    const userId = verifiedToken.sub;
+    const username = verifiedToken['cognito:username'];
+    const email = verifiedToken.email;
+    const role = verifiedToken.role || 'User'; // Default to 'User' if not specified
+    const scopes = verifiedToken.scope || '';
+    const tenantId = verifiedToken.tenantId || null;
+    
+    // Check if user has the required scope for this resource
+    if (requiredScope && !hasRequiredScope(scopes, requiredScope)) {
+      // If Admin role, bypass scope check (optional)
+      if (role !== 'Admin') {
+        console.log(`User ${username} does not have required scope ${requiredScope}`);
+        throw new Error('Insufficient permissions');
+      }
+    }
+    
+    // Generate allow policy
+    const policy = generatePolicy(userId, 'Allow', methodArn);
+    
+    // Add user context to be passed to backend
+    policy.context = {
+      userId,
+      username,
+      email,
+      role,
+      scopes,
+      tenantId,
+      // Include original token for downstream services that need to call other services
+      authorizedToken: token
+    };
+    
+    return policy;
+    
+  } catch (error) {
+    console.error('Authorization error:', error);
+    
+    // For security, don't expose detailed error messages
+    throw new Error('Unauthorized');
+  }
+};
+
+// Helper function to generate IAM policy
+const generatePolicy = (principalId, effect, resource) => {
+  const policy = {
+    principalId,
+    policyDocument: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Action: 'execute-api:Invoke',
+          Effect: effect,
+          Resource: resource
+        }
+      ]
+    }
+  };
+  
+  return policy;
+};
+```
+
+### 2. Set Up Lambda Environment Variables
+
+Configure environment variables for the Lambda function:
+
+#### Using AWS Console:
+
+1. Go to the Lambda function
+2. Scroll down to the "Environment variables" section
+3. Add the following key-value pairs:
+   - `REGION`: Your AWS region (e.g., `us-east-1`)
+   - `USER_POOL_ID`: Your Cognito User Pool ID
+
+#### Using AWS CLI:
+
+```bash
+aws lambda update-function-configuration \
+  --function-name lambda-authorizer \
+  --environment "Variables={REGION=us-east-1,USER_POOL_ID=YOUR_USER_POOL_ID}"
+```
+
+### 3. Configure Lambda Execution Role
+
+Ensure the Lambda function has the necessary permissions:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      "Resource": "arn:aws:logs:*:*:*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "cognito-idp:DescribeUserPool"
+      ],
+      "Resource": "arn:aws:cognito-idp:*:*:userpool/*"
+    }
+  ]
+}
+```
+
+#### Using AWS CLI:
+
+```bash
+# Create policy
+aws iam create-policy \
+  --policy-name lambda-authorizer-policy \
+  --policy-document file://lambda-authorizer-policy.json
+
+# Attach policy to Lambda execution role
+aws iam attach-role-policy \
+  --role-name lambda-authorizer-role \
+  --policy-arn arn:aws:iam::YOUR_ACCOUNT_ID:policy/lambda-authorizer-policy
+```
+
+### 4. Testing the Lambda Authorizer
+
+Create a test event to verify the authorizer works:
+
+```json
+{
+  "authorizationToken": "Bearer YOUR_ACTUAL_JWT_TOKEN",
+  "methodArn": "arn:aws:execute-api:us-east-1:123456789012:apiId/stage/GET/users"
+}
+```
+
+You can obtain a valid token by:
+1. Authenticating a user via Cognito
+2. Extracting the ID token from the authentication response
+3. Using it in your test event
+
+### 5. Handling Multiple APIs and Microservices
+
+If you have multiple APIs or microservices, you can enhance the authorizer:
+
+```javascript
+// Enhanced resource mapping with service-specific permissions
+const servicePermissionMap = {
+  'user-service': {
+    '/users': {
+      'GET': 'users:read',
+      'POST': 'users:write',
+      'PUT': 'users:write',
+      'DELETE': 'users:write'
+    }
+  },
+  'report-service': {
+    '/reports': {
+      'GET': 'reports:read',
+      'POST': 'reports:write'
+    }
+  }
+};
+
+// Extract service from methodArn
+const getServiceFromArn = (methodArn) => {
+  const arnParts = methodArn.split(':');
+  const apiGatewayArnParts = arnParts[5].split('/');
+  const stageName = apiGatewayArnParts[1]; // e.g., prod, dev, etc.
+  
+  // You can use stage names or API IDs to identify services
+  // This is just one approach - customize based on your naming conventions
+  if (stageName.startsWith('user')) return 'user-service';
+  if (stageName.startsWith('report')) return 'report-service';
+  
+  return 'default-service';
+};
+
+// In the handler:
+const service = getServiceFromArn(methodArn);
+const resourceMap = servicePermissionMap[service] || {};
+const requiredScope = resourceMap[resource]?.[httpMethod] || null;
+```
+
+### 6. Passing Credentials to Subsystems
+
+To allow backend services to retrieve subsystem credentials based on scope:
+
+```javascript
+// Add credential retrieval based on scope
+const getSubsystemCredentials = async (scopes) => {
+  if (!scopes) return null;
+  
+  const scopeArray = scopes.split(' ');
+  const credentials = {};
+  
+  // Check for database access scope
+  if (scopeArray.includes('database:read') || scopeArray.includes('database:write')) {
+    // Retrieve database credentials from Secrets Manager
+    // This is just an example - implement secure credential retrieval
+    credentials.database = {
+      // These would be retrieved from AWS Secrets Manager or similar
+      host: process.env.DB_HOST,
+      readOnly: !scopeArray.includes('database:write')
+    };
+  }
+  
+  // Check for external API access scope
+  if (scopeArray.includes('external-api:access')) {
+    credentials.externalApi = {
+      // These would be retrieved from AWS Secrets Manager or similar
+      apiKey: process.env.EXTERNAL_API_KEY
+    };
+  }
+  
+  return credentials;
+};
+
+// In the handler:
+const subsystemCredentials = await getSubsystemCredentials(scopes);
+
+// Add to policy context
+policy.context = {
+  userId,
+  username,
+  email,
+  role,
+  scopes,
+  tenantId,
+  subsystemCredentials: subsystemCredentials ? JSON.stringify(subsystemCredentials) : null
+};
+```
+
+### 7. Implementing a Permissions Cache (Optional)
+
+For better performance, consider caching permission checks:
+
+```javascript
+// Using AWS Lambda environment variables as a simple cache
+// For production, consider using DynamoDB or ElastiCache
+let permissionsCache = {};
+
+// Cache initialization (on cold start)
+const initCache = async () => {
+  try {
+    // Load common permissions patterns
+    permissionsCache = {
+      'Admin': {
+        '/users': { 'GET': true, 'POST': true, 'PUT': true, 'DELETE': true },
+        '/reports': { 'GET': true, 'POST': true }
+      },
+      'Manager': {
+        '/users': { 'GET': true },
+        '/reports': { 'GET': true, 'POST': true }
+      },
+      'User': {
+        '/users': { 'GET': false },
+        '/reports': { 'GET': true, 'POST': false }
+      }
+    };
+  } catch (error) {
+    console.error('Cache initialization error:', error);
+  }
+};
+
+// Check permissions with cache
+const checkPermissions = (role, resource, method) => {
+  // If role-based permission exists in cache, use it
+  if (permissionsCache[role]?.[resource]?.[method] !== undefined) {
+    return permissionsCache[role][resource][method];
+  }
+  
+  // Default to requiring scope check if not in cache
+  return null;
+};
+
+// Call initCache during module initialization
+initCache();
+
+// In the handler:
+const cachedPermission = checkPermissions(role, resource, httpMethod);
+if (cachedPermission === true) {
+  // Allow access without checking scopes
+  // Generate allow policy...
+} else if (cachedPermission === false) {
+  // Deny access without checking scopes
+  throw new Error('Insufficient permissions');
+} else {
+  // Fall back to scope-based check
+  if (!hasRequiredScope(scopes, requiredScope)) {
+    throw new Error('Insufficient permissions');
+  }
+}
+```
+
+Now your Lambda authorizer is ready to validate Cognito tokens, enforce fine-grained permissions, and pass user context to backend services.
+
+## API Gateway Configuration
+
+This section covers how to configure API Gateway to use the Lambda authorizer and pass user context to backend services.
+
+### 1. Create a REST API
+
+First, create an API Gateway REST API:
+
+#### Using AWS Console:
+
+1. Navigate to the API Gateway console
+2. Click "Create API"
+3. Select "REST API" and click "Build"
+4. For "API name", enter a name (e.g., "YourAppAPI")
+5. Keep the default "Edge optimized" endpoint type
+6. Click "Create API"
+
+#### Using AWS CLI:
+
+```bash
+aws apigateway create-rest-api \
+  --name "YourAppAPI" \
+  --endpoint-configuration "types=EDGE"
+```
+
+### 2. Configure the Lambda Authorizer
+
+Next, create and configure the Lambda authorizer:
+
+#### Using AWS Console:
+
+1. In the API Gateway console, select your API
+2. In the left navigation, select "Authorizers"
+3. Click "Create Authorizer"
+4. Configure the authorizer:
+   - Name: "CognitoJwtAuthorizer"
+   - Type: "Lambda"
+   - Lambda Function: Select your Lambda authorizer function
+   - Lambda Event Payload: "Token"
+   - Token Source: "Authorization"
+   - Token Validation: ^Bearer [-0-9a-zA-Z\._]*$
+   - Authorization Caching: Enabled (TTL: 300 seconds)
+5. Click "Create"
+
+#### Using AWS CLI:
+
+```bash
+# Get the Lambda function ARN
+LAMBDA_ARN=$(aws lambda get-function --function-name lambda-authorizer --query 'Configuration.FunctionArn' --output text)
+
+# Create authorizer
+aws apigateway create-authorizer \
+  --rest-api-id YOUR_API_ID \
+  --name "CognitoJwtAuthorizer" \
+  --type REQUEST \
+  --authorizer-uri "arn:aws:apigateway:${AWS_REGION}:lambda:path/2015-03-31/functions/${LAMBDA_ARN}/invocations" \
+  --identity-source "method.request.header.Authorization" \
+  --authorizer-result-ttl-in-seconds 300
+```
+
+### 3. Grant API Gateway Permission to Invoke Lambda
+
+Allow API Gateway to invoke the Lambda authorizer:
+
+#### Using AWS CLI:
+
+```bash
+aws lambda add-permission \
+  --function-name lambda-authorizer \
+  --statement-id apigateway-invoke \
+  --action lambda:InvokeFunction \
+  --principal apigateway.amazonaws.com \
+  --source-arn "arn:aws:execute-api:${AWS_REGION}:${AWS_ACCOUNT_ID}:${API_ID}/authorizers/${AUTHORIZER_ID}"
+```
+
+### 4. Create API Resources and Methods
+
+Create resources and methods for your API:
+
+#### Using AWS Console:
+
+1. In the API Gateway console, select your API
+2. Click "Resources" in the left navigation
+3. Click "Actions" > "Create Resource"
+4. Enter "users" for "Resource Name" and "/users" for "Resource Path"
+5. Click "Create Resource"
+6. With the new resource selected, click "Actions" > "Create Method"
+7. Select "GET" from the dropdown and click the checkmark
+8. Configure the method:
+   - Integration type: Lambda Function
+   - Use Lambda Proxy integration: Yes
+   - Lambda Function: Select your backend Lambda function
+   - Under "Method Request":
+     - Authorization: Select your Lambda authorizer
+     - HTTP Request Headers: Add 'Authorization' (Required: true)
+9. Click "Save"
+10. Repeat steps 6-9 for other methods (POST, PUT, DELETE)
+11. Repeat steps 3-10 for other resources
+
+#### Using AWS CLI:
+
+```bash
+# Get the root resource ID
+ROOT_ID=$(aws apigateway get-resources --rest-api-id YOUR_API_ID --query 'items[?path==`/`].id' --output text)
+
+# Create users resource
+USER_RESOURCE_ID=$(aws apigateway create-resource \
+  --rest-api-id YOUR_API_ID \
+  --parent-id $ROOT_ID \
+  --path-part "users" \
+  --query 'id' \
+  --output text)
+
+# Create GET method with authorizer
+aws apigateway put-method \
+  --rest-api-id YOUR_API_ID \
+  --resource-id $USER_RESOURCE_ID \
+  --http-method GET \
+  --authorization-type CUSTOM \
+  --authorizer-id $AUTHORIZER_ID \
+  --request-parameters "method.request.header.Authorization=true"
+
+# Set up Lambda integration
+aws apigateway put-integration \
+  --rest-api-id YOUR_API_ID \
+  --resource-id $USER_RESOURCE_ID \
+  --http-method GET \
+  --type AWS_PROXY \
+  --integration-http-method POST \
+  --uri "arn:aws:apigateway:${AWS_REGION}:lambda:path/2015-03-31/functions/arn:aws:lambda:${AWS_REGION}:${AWS_ACCOUNT_ID}:function:users-get-lambda/invocations"
+```
+
+### 5. Configure Method Response
+
+Configure the method response to include CORS headers:
+
+#### Using AWS Console:
+
+1. Select the method you created
+2. Click on "Method Response"
+3. Expand the "200" response
+4. Add response headers:
+   - Access-Control-Allow-Origin
+   - Access-Control-Allow-Credentials
+   - Access-Control-Allow-Headers
+5. Click "Save"
+
+### 6. Configure CORS
+
+Configure CORS to allow cross-origin requests:
+
+#### Using AWS Console:
+
+1. Select your resource (e.g., "/users")
+2. Click "Actions" > "Enable CORS"
+3. Configure CORS settings:
+   - Access-Control-Allow-Headers: 'Content-Type,X-Amz-Date,Authorization,X-Api-Key'
+   - Access-Control-Allow-Methods: 'OPTIONS,GET,POST,PUT,DELETE'
+   - Access-Control-Allow-Origin: 'https://your-frontend-domain.com'
+   - Access-Control-Allow-Credentials: 'true'
+4. Click "Enable CORS and replace existing CORS headers"
+
+### 7. Deploy the API
+
+Deploy the API to a stage:
+
+#### Using AWS Console:
+
+1. Click "Actions" > "Deploy API"
+2. For "Deployment stage", select "New Stage"
+3. Enter "prod" for "Stage name"
+4. Click "Deploy"
+
+#### Using AWS CLI:
+
+```bash
+aws apigateway create-deployment \
+  --rest-api-id YOUR_API_ID \
+  --stage-name prod
+```
+
+### 8. Test the Deployed API
+
+Test the API with a valid token:
+
+```bash
+# Get a valid token through Cognito authentication
+TOKEN="YOUR_VALID_TOKEN"
+
+# Test the API
+curl -X GET https://API_ID.execute-api.REGION.amazonaws.com/prod/users \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### 9. Create a Custom Domain (Optional)
+
+For production, set up a custom domain:
+
+#### Using AWS Console:
+
+1. In API Gateway, go to "Custom domain names"
+2. Click "Create"
+3. Configure:
+   - Domain Name: "api.yourdomain.com"
+   - Endpoint Configuration: Edge-optimized
+   - ACM Certificate: Select or create a certificate
+4. Click "Create"
+5. Set up API mapping:
+   - Base Path: "/"
+   - API: Select your API
+   - Stage: "prod"
+6. Click "Save"
+7. Update your DNS with the provided CloudFront distribution domain
+
+### 10. Configure Gateway Caching (Optional)
+
+To improve performance:
+
+#### Using AWS Console:
+
+1. In API Gateway, go to "Stages"
+2. Select your stage (e.g., "prod")
+3. Click on the "Settings" tab
+4. Under "Cache Settings", enable caching
+5. Configure cache settings:
+   - Cache capacity: Select desired size
+   - Cache time-to-live (TTL): 300 seconds
+   - Require authorization: Yes
+6. Click "Save Changes"
+
+### 11. Set Up Usage Plans and API Keys (Optional)
+
+For rate limiting and quota management:
+
+#### Using AWS Console:
+
+1. In API Gateway, go to "Usage Plans"
+2. Click "Create"
+3. Configure:
+   - Name: "BasicPlan"
+   - Rate: e.g., 100 requests per second
+   - Burst: e.g., 200 requests
+   - Quota: e.g., 1,000,000 requests per month
+4. Click "Next"
+5. Add API stages:
+   - API: Select your API
+   - Stage: "prod"
+6. Click "Next"
+7. Create or add API keys
+8. Click "Done"
+
+### 12. Setting Up Resource Policies (Optional)
+
+To further secure your API:
+
+#### Using AWS Console:
+
+1. In API Gateway, select your API
+2. Click "Resource Policy"
+3. Enter a policy, e.g.:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": "*",
+      "Action": "execute-api:Invoke",
+      "Resource": "arn:aws:execute-api:*:*:*"
+    },
+    {
+      "Effect": "Deny",
+      "Principal": "*",
+      "Action": "execute-api:Invoke",
+      "Resource": "arn:aws:execute-api:*:*:*",
+      "Condition": {
+        "StringNotEquals": {
+          "aws:Referer": "https://your-frontend-domain.com"
+        }
+      }
+    }
+  ]
+}
+```
+
+4. Click "Save"
+
+Now your API Gateway is configured to use the Lambda authorizer, which validates Cognito tokens and passes user context to backend services. The next section will cover how to integrate this authentication system with your frontend application.
+
+## Frontend Integration
+
+This section covers how to integrate AWS Cognito authentication with your React frontend application.
+
+### 1. Install Required Dependencies
+
+Start by installing the necessary packages:
+
+```bash
+# Using npm
+npm install aws-amplify @aws-amplify/ui-react
+
+# Using yarn
+yarn add aws-amplify @aws-amplify/ui-react
+```
+
+### 2. Configure Amplify
+
+Create a configuration file to set up Amplify:
+
+```typescript
+// src/services/auth/amplifyConfig.ts
+import { Amplify } from 'aws-amplify';
+
+export const configureAmplify = () => {
+  Amplify.configure({
+    Auth: {
+      region: import.meta.env.VITE_AWS_REGION || 'us-east-1',
+      userPoolId: import.meta.env.VITE_COGNITO_USER_POOL_ID,
+      userPoolWebClientId: import.meta.env.VITE_COGNITO_CLIENT_ID,
+      mandatorySignIn: true,
+      authenticationFlowType: 'USER_PASSWORD_AUTH',
+      oauth: {
+        domain: import.meta.env.VITE_COGNITO_DOMAIN,
+        scope: ['email', 'profile', 'openid'],
+        redirectSignIn: import.meta.env.VITE_REDIRECT_SIGN_IN,
+        redirectSignOut: import.meta.env.VITE_REDIRECT_SIGN_OUT,
+        responseType: 'code'
+      }
+    },
+    API: {
+      endpoints: [
+        {
+          name: 'api',
+          endpoint: import.meta.env.VITE_API_URL,
+          region: import.meta.env.VITE_AWS_REGION || 'us-east-1',
+          custom_header: async () => {
+            return { Authorization: `Bearer ${(await Auth.currentSession()).getIdToken().getJwtToken()}` }
+          }
+        }
+      ]
+    }
+  });
+};
+```
+
+Call this configuration function in your application entry point:
+
+```typescript
+// src/main.tsx
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+import { configureAmplify } from './services/auth/amplifyConfig';
+
+// Configure Amplify before rendering the app
+configureAmplify();
+
+ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
+```
+
+### 3. Create Authentication Service
+
+Implement an authentication service to interact with Cognito:
+
+```typescript
+// src/services/auth/authService.ts
+import { Auth } from 'aws-amplify';
+import { CognitoUser } from '@aws-amplify/auth';
+
+export interface LoginCredentials {
+  username: string;
+  password: string;
+}
+
+export interface SignUpCredentials {
+  username: string;
+  password: string;
+  email: string;
+  name: string;
+}
+
+export interface User {
+  id: string;
+  username: string;
+  email: string;
+  name: string;
+  role: string;
+  scopes: string[];
+  tenantId?: string;
+}
+
+export const authService = {
+  // Sign in a user
+  login: async (credentials: LoginCredentials): Promise<User> => {
+    try {
+      const cognitoUser = await Auth.signIn(credentials.username, credentials.password);
+      return mapCognitoUserToUser(cognitoUser);
+    } catch (error) {
+      console.error('Error signing in:', error);
+      throw error;
+    }
+  },
+
+  // Sign up a new user
+  signUp: async (credentials: SignUpCredentials): Promise<{ userConfirmed: boolean; userSub: string }> => {
+    try {
+      const result = await Auth.signUp({
+        username: credentials.username,
+        password: credentials.password,
+        attributes: {
+          email: credentials.email,
+          name: credentials.name,
+        },
+      });
+      
+      return {
+        userConfirmed: result.userConfirmed,
+        userSub: result.userSub,
+      };
+    } catch (error) {
+      console.error('Error signing up:', error);
+      throw error;
+    }
+  },
+
+  // Confirm sign up with verification code
+  confirmSignUp: async (username: string, code: string): Promise<void> => {
+    try {
+      await Auth.confirmSignUp(username, code);
+    } catch (error) {
+      console.error('Error confirming sign up:', error);
+      throw error;
+    }
+  },
+
+  // Sign out the current user
+  logout: async (): Promise<void> => {
+    try {
+      await Auth.signOut();
+    } catch (error) {
+      console.error('Error signing out:', error);
+      throw error;
+    }
+  },
+
+  // Get the current authenticated user
+  getCurrentUser: async (): Promise<User | null> => {
+    try {
+      const cognitoUser = await Auth.currentAuthenticatedUser();
+      return mapCognitoUserToUser(cognitoUser);
+    } catch (error) {
+      // User is not authenticated
+      return null;
+    }
+  },
+
+  // Get the current session
+  getCurrentSession: async () => {
+    try {
+      return await Auth.currentSession();
+    } catch (error) {
+      // No current session
+      return null;
+    }
+  },
+
+  // Request a password reset
+  requestPasswordReset: async (username: string): Promise<void> => {
+    try {
+      await Auth.forgotPassword(username);
+    } catch (error) {
+      console.error('Error requesting password reset:', error);
+      throw error;
+    }
+  },
+
+  // Confirm password reset with new password
+  confirmPasswordReset: async (username: string, code: string, newPassword: string): Promise<void> => {
+    try {
+      await Auth.forgotPasswordSubmit(username, code, newPassword);
+    } catch (error) {
+      console.error('Error confirming password reset:', error);
+      throw error;
+    }
+  },
+
+  // Change password for authenticated user
+  changePassword: async (oldPassword: string, newPassword: string): Promise<void> => {
+    try {
+      const user = await Auth.currentAuthenticatedUser();
+      await Auth.changePassword(user, oldPassword, newPassword);
+    } catch (error) {
+      console.error('Error changing password:', error);
+      throw error;
+    }
+  },
+
+  // Update user attributes
+  updateUserAttributes: async (attributes: { [key: string]: string }): Promise<void> => {
+    try {
+      const user = await Auth.currentAuthenticatedUser();
+      await Auth.updateUserAttributes(user, attributes);
+    } catch (error) {
+      console.error('Error updating user attributes:', error);
+      throw error;
+    }
+  },
+};
+
+// Helper function to map Cognito user to application user
+const mapCognitoUserToUser = (cognitoUser: CognitoUser): User => {
+  const attributes = cognitoUser.attributes || {};
+  const idToken = cognitoUser.signInUserSession?.idToken?.payload || {};
+  
+  return {
+    id: attributes.sub || idToken.sub,
+    username: cognitoUser.username,
+    email: attributes.email || idToken.email,
+    name: attributes.name || idToken.name || '',
+    role: attributes['custom:role'] || idToken.role || 'User',
+    scopes: (attributes['custom:scopes'] || idToken.scope || '').split(' ').filter(Boolean),
+    tenantId: attributes['custom:tenantId'] || idToken.tenantId,
+  };
+};
+```
+
+### 4. Create Auth Context
+
+Implement an authentication context to provide authentication state throughout your application:
+
+```typescript
+// src/contexts/AuthContext.tsx
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { authService, User } from '../services/auth/authService';
+import { Auth } from 'aws-amplify';
+
+interface AuthContextType {
+  user: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  isAdmin: boolean;
+  hasPermission: (resource: string, action: string) => boolean;
+  login: (username: string, password: string) => Promise<User>;
+  logout: () => Promise<void>;
+  getIdToken: () => Promise<string | null>;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  // Check if user is authenticated on mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const currentUser = await authService.getCurrentUser();
+        setUser(currentUser);
+      } catch (error) {
+        console.error('Error checking authentication:', error);
+        setUser(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
+
+  // Login function
+  const login = async (username: string, password: string) => {
+    setIsLoading(true);
+    try {
+      const loggedInUser = await authService.login({ username, password });
+      setUser(loggedInUser);
+      return loggedInUser;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Logout function
+  const logout = async () => {
+    setIsLoading(true);
+    try {
+      await authService.logout();
+      setUser(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Check if user has permission for a specific resource action
+  const hasPermission = (resource: string, action: string) => {
+    if (!user) return false;
+    
+    // Admin role has all permissions
+    if (user.role === 'Admin') return true;
+    
+    // Check scopes
+    const requiredScope = `${resource}:${action}`;
+    return user.scopes.includes(requiredScope);
+  };
+
+  // Get ID token for API calls
+  const getIdToken = async (): Promise<string | null> => {
+    try {
+      const session = await Auth.currentSession();
+      return session.getIdToken().getJwtToken();
+    } catch (error) {
+      console.error('Error getting ID token:', error);
+      return null;
+    }
+  };
+
+  // Check if user is admin
+  const isAdmin = user?.role === 'Admin';
+
+  // Context value
+  const value = {
+    user,
+    isAuthenticated: !!user,
+    isLoading,
+    isAdmin,
+    hasPermission,
+    login,
+    logout,
+    getIdToken,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
+
+// Custom hook to use auth context
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
+```
+
+### 5. Create Protected Route Component
+
+Implement a protected route component to restrict access to authenticated users:
+
+```typescript
+// src/components/auth/ProtectedRoute.tsx
+import React from 'react';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
+
+interface ProtectedRouteProps {
+  requiredPermission?: {
+    resource: string;
+    action: string;
+  };
+  redirectTo?: string;
+}
+
+export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
+  requiredPermission,
+  redirectTo = '/login',
+}) => {
+  const { isAuthenticated, isLoading, hasPermission } = useAuth();
+  const location = useLocation();
+
+  // Show loading indicator while checking authentication
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  // If not authenticated, redirect to login
+  if (!isAuthenticated) {
+    return <Navigate to={redirectTo} state={{ from: location }} replace />;
+  }
+
+  // Check if user has required permission
+  if (requiredPermission) {
+    const { resource, action } = requiredPermission;
+    if (!hasPermission(resource, action)) {
+      return <Navigate to="/unauthorized" replace />;
+    }
+  }
+
+  // User is authenticated and has permission
+  return <Outlet />;
+};
+```
+
+### 6. Create Login Component
+
+Implement a login form component:
+
+```tsx
+// src/components/auth/LoginForm.tsx
+import React, { useState } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
+import { useNavigate, useLocation } from 'react-router-dom';
+
+export const LoginForm: React.FC = () => {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const { login } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Get the redirect path from location state or default to home
+  const from = (location.state as any)?.from?.pathname || '/';
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+
+    try {
+      await login(username, password);
+      navigate(from, { replace: true });
+    } catch (err: any) {
+      setError(err.message || 'Failed to sign in');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex justify-center items-center min-h-screen bg-gray-100">
+      <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
+        <h2 className="text-2xl font-bold mb-6 text-center">Sign In</h2>
+        
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            {error}
+          </div>
+        )}
+        
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="username">
+              Username or Email
+            </label>
+            <input
+              id="username"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            />
+          </div>
+          
+          <div className="mb-6">
+            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="password">
+              Password
+            </label>
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            />
+          </div>
+          
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center">
+              <input
+                id="remember"
+                type="checkbox"
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <label htmlFor="remember" className="ml-2 block text-sm text-gray-900">
+                Remember me
+              </label>
+            </div>
+            
+            <a href="/forgot-password" className="text-sm text-blue-600 hover:text-blue-500">
+              Forgot password?
+            </a>
+          </div>
+          
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+          >
+            {loading ? 'Signing in...' : 'Sign In'}
+          </button>
+        </form>
+        
+        <div className="mt-6 text-center">
+          <p className="text-sm text-gray-600">
+            Don't have an account?{' '}
+            <a href="/signup" className="text-blue-600 hover:text-blue-500">
+              Sign up
+            </a>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
+```
+
+### 7. Create API Service with Auth Integration
+
+Create an API service that includes authentication headers:
+
+```typescript
+// src/services/api/apiClient.ts
+import axios, { AxiosRequestConfig, AxiosInstance } from 'axios';
+import { Auth } from 'aws-amplify';
+
+// Create axios instance
+const apiClient: AxiosInstance = axios.create({
+  baseURL: import.meta.env.VITE_API_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  timeout: 30000, // 30 seconds
+});
+
+// Add a request interceptor to include auth token
+apiClient.interceptors.request.use(
+  async (config) => {
+    try {
+      const session = await Auth.currentSession();
+      const token = session.getIdToken().getJwtToken();
+      
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    } catch (error) {
+      // No current session - proceed without authentication
+      console.log('No authentication session available');
+    }
+    
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Add a response interceptor to handle auth errors
+apiClient.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+    
+    // If error is 401 Unauthorized and we haven't retried yet
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      
+      try {
+        // Attempt to refresh session
+        await Auth.currentSession();
+        
+        // Retry the original request with new tokens
+        return apiClient(originalRequest);
+      } catch (refreshError) {
+        // Unable to refresh, user may need to log in again
+        // Redirect to login page or dispatch an event to handle this
+        window.dispatchEvent(new CustomEvent('auth:sessionExpired'));
+        return Promise.reject(refreshError);
+      }
+    }
+    
+    return Promise.reject(error);
+  }
+);
+
+export default apiClient;
+```
+
+### 8. Create Session Expiry Handler
+
+Implement a handler for session expiration:
+
+```typescript
+// src/hooks/useSessionExpiryHandler.ts
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+
+export const useSessionExpiryHandler = () => {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+  
+  useEffect(() => {
+    const handleSessionExpiry = async () => {
+      await logout();
+      navigate('/login', { state: { message: 'Your session has expired. Please sign in again.' } });
+    };
+    
+    window.addEventListener('auth:sessionExpired', handleSessionExpiry);
+    
+    return () => {
+      window.removeEventListener('auth:sessionExpired', handleSessionExpiry);
+    };
+  }, [logout, navigate]);
+};
+```
+
+### 9. Set Up Router with Protected Routes
+
+Configure your application router with protected routes:
+
+```tsx
+// src/App.tsx
+import React from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
+import { ProtectedRoute } from './components/auth/ProtectedRoute';
+import { LoginForm } from './components/auth/LoginForm';
+import { Dashboard } from './components/Dashboard';
+import { UsersList } from './components/admin/UsersList';
+import { NotFound } from './components/NotFound';
+import { Unauthorized } from './components/Unauthorized';
+import { useSessionExpiryHandler } from './hooks/useSessionExpiryHandler';
+
+const AuthenticatedApp: React.FC = () => {
+  // Handle session expiry
+  useSessionExpiryHandler();
+  
+  return (
+    <Routes>
+      {/* Public routes */}
+      <Route path="/login" element={<LoginForm />} />
+      <Route path="/unauthorized" element={<Unauthorized />} />
+      
+      {/* Protected routes that require authentication */}
+      <Route element={<ProtectedRoute />}>
+        <Route path="/" element={<Dashboard />} />
+        
+        {/* Routes that require specific permissions */}
+        <Route 
+          element={
+            <ProtectedRoute requiredPermission={{ resource: 'users', action: 'read' }} />
+          }
+        >
+          <Route path="/users" element={<UsersList />} />
+        </Route>
+      </Route>
+      
+      {/* 404 route */}
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <AuthenticatedApp />
+      </AuthProvider>
+    </BrowserRouter>
+  );
+};
+
+export default App;
+```
+
+### 10. Create Permission-aware UI Components
+
+Implement components that conditionally render based on user permissions:
+
+```tsx
+// src/components/auth/PermissionGuard.tsx
+import React from 'react';
+import { useAuth } from '../../contexts/AuthContext';
+
+interface PermissionGuardProps {
+  resource: string;
+  action: string;
+  fallback?: React.ReactNode;
+  children: React.ReactNode;
+}
+
+export const PermissionGuard: React.FC<PermissionGuardProps> = ({
+  resource,
+  action,
+  fallback = null,
+  children,
+}) => {
+  const { hasPermission } = useAuth();
+  
+  if (!hasPermission(resource, action)) {
+    return <>{fallback}</>;
+  }
+  
+  return <>{children}</>;
+};
+```
+
+Use this component to conditionally render UI elements:
+
+```tsx
+// Example usage in a component
+import { PermissionGuard } from '../auth/PermissionGuard';
+
+const MyComponent: React.FC = () => {
+  return (
+    <div>
+      <h1>Dashboard</h1>
+      
+      {/* Only users with 'users:create' permission will see this button */}
+      <PermissionGuard 
+        resource="users" 
+        action="create"
+        fallback={<p>You don't have permission to create users</p>}
+      >
+        <button className="bg-blue-500 text-white px-4 py-2 rounded">
+          Create User
+        </button>
+      </PermissionGuard>
+    </div>
+  );
+};
+```
+
+### 11. Environment Variables
+
+Configure the necessary environment variables in your `.env` file:
+
+```
+# .env.local
+VITE_AWS_REGION=us-east-1
+VITE_COGNITO_USER_POOL_ID=your-user-pool-id
+VITE_COGNITO_CLIENT_ID=your-app-client-id
+VITE_COGNITO_DOMAIN=your-cognito-domain.auth.us-east-1.amazoncognito.com
+VITE_API_URL=https://your-api-id.execute-api.us-east-1.amazonaws.com/prod
+VITE_REDIRECT_SIGN_IN=https://your-app-domain.com/callback
+VITE_REDIRECT_SIGN_OUT=https://your-app-domain.com/login
+```
+
+With these components and configurations in place, your React application will now have a complete authentication system integrated with AWS Cognito. Users will be able to sign in, access protected routes based on their permissions, and API requests will automatically include the necessary authentication tokens.
+
+## Backend Service Integration
+
+This section explains how to integrate the authentication system with your backend Lambda services, focusing on how to access and use the user context passed by the Lambda authorizer.
+
+### 1. Accessing User Context in Lambda Functions
+
+When a request passes through the API Gateway with Lambda authorizer, the user context is available in the event object:
+
+```javascript
+// Example Lambda function handler
+exports.handler = async (event, context) => {
+  try {
+    // Extract user context from the authorizer context
+    const userContext = event.requestContext.authorizer || {};
+    
+    // Extract specific user information
+    const userId = userContext.userId;
+    const username = userContext.username;
+    const userRole = userContext.role;
+    const userScopes = userContext.scopes ? userContext.scopes.split(' ') : [];
+    const tenantId = userContext.tenantId;
+    
+    // Process the request based on user context
+    let responseData;
+    if (userRole === 'Admin') {
+      responseData = await getAllData();
+    } else {
+      // Filter data based on tenant for non-admin users
+      responseData = await getDataForTenant(tenantId);
+    }
+    
+    return {
+      statusCode: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      },
+      body: JSON.stringify({
+        data: responseData,
+        user: { id: userId, username, role: userRole }
+      })
+    };
+  } catch (error) {
+    console.error('Error processing request:', error);
+    return {
+      statusCode: 500,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: 'Internal server error' })
+    };
+  }
+};
+```
+
+### 2. Creating a Permission Utility
+
+Implement a utility to check user permissions:
+
+```javascript
+// utils/permissions.js
+
+/**
+ * Check if user has a specific permission
+ */
+const hasPermission = (userContext, resource, action) => {
+  // Admin role has all permissions
+  if (userContext.role === 'Admin') {
+    return true;
+  }
+  
+  // Check scopes
+  const requiredScope = `${resource}:${action}`;
+  return userContext.scopes.includes(requiredScope);
+};
+
+/**
+ * Ensure user has required permission or throw error
+ */
+const requirePermission = (userContext, resource, action) => {
+  if (!hasPermission(userContext, resource, action)) {
+    const error = new Error('Permission denied');
+    error.statusCode = 403;
+    throw error;
+  }
+};
+
+module.exports = {
+  hasPermission,
+  requirePermission
+};
+```
+
+### 3. Implementing Middleware for Lambda Functions
+
+Create a middleware pattern for Lambda functions:
+
+```javascript
+// middleware/authMiddleware.js
+const { requirePermission } = require('../utils/permissions');
+
+/**
+ * Create middleware that requires specific permissions
+ */
+const requireAuth = (resource, action) => {
+  return (handler) => {
+    return async (event, context) => {
+      try {
+        // Extract user context
+        const userContext = event.requestContext.authorizer || {};
+        
+        // Check permission
+        requirePermission(userContext, resource, action);
+        
+        // Call the original handler
+        return await handler(event, context);
+      } catch (error) {
+        console.error('Authentication error:', error);
+        
+        return {
+          statusCode: error.statusCode || 401,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: error.message || 'Unauthorized'
+          })
+        };
+      }
+    };
+  };
+};
+
+module.exports = { requireAuth };
+```
+
+### 4. Using the Middleware in Lambda Functions
+
+Apply the middleware to your Lambda functions:
+
+```javascript
+// handlers/userHandler.js
+const { requireAuth } = require('../middleware/authMiddleware');
+
+// Get all users (requires users:read permission)
+const getAllUsers = async (event) => {
+  const userContext = event.requestContext.authorizer;
+  
+  // Your business logic to get users
+  // Use userContext for filtering if needed
+  
+  return {
+    statusCode: 200,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ /* Your response data */ })
+  };
+};
+
+// Export handlers with middleware applied
+module.exports = {
+  getAllUsers: requireAuth('users', 'read')(getAllUsers)
+};
+```
+
+### 5. Accessing Subsystem Credentials
+
+If your Lambda authorizer includes subsystem credentials in the user context, you can use them to access other systems:
+
+```javascript
+// Example of accessing subsystem credentials
+const getCredentialClient = (event) => {
+  const userContext = event.requestContext.authorizer || {};
+  
+  // Extract subsystem credentials
+  const credentials = userContext.subsystemCredentials 
+    ? JSON.parse(userContext.subsystemCredentials) 
+    : null;
+  
+  if (!credentials || !credentials.database) {
+    throw new Error('Database credentials not available');
+  }
+  
+  // Use credentials to create a database client
+  return createDatabaseClient(credentials.database);
+};
+
+// In your handler
+const handler = async (event) => {
+  const dbClient = getCredentialClient(event);
+  
+  // Use the client with appropriate permissions
+  const data = await dbClient.query(/* ... */);
+  
+  return {
+    statusCode: 200,
+    body: JSON.stringify({ data })
+  };
+};
+```
+
+### 6. Implementing Multi-Tenant Data Access
+
+For multi-tenant applications, automatically filter data by tenant:
+
+```javascript
+// Example of tenant-aware data access
+const getUsersForTenant = async (event) => {
+  const userContext = event.requestContext.authorizer || {};
+  const tenantId = userContext.tenantId;
+  const role = userContext.role;
+  
+  // For admin users, optionally bypass tenant filtering
+  if (role === 'Admin' && !tenantId) {
+    return await getAllUsers();
+  }
+  
+  // For other users, filter by tenant
+  return await getUsersByTenant(tenantId);
+};
+```
+
+### 7. Setting Up Serverless Configuration
+
+For serverless deployments, create a serverless.yml configuration:
+
+```yaml
+# serverless.yml (simplified example)
+service: your-app-api
+
+provider:
+  name: aws
+  runtime: nodejs14.x
+  region: us-east-1
+  environment:
+    USERS_TABLE: ${self:service}-users-${self:provider.stage}
+
+functions:
+  api:
+    handler: index.handler
+    events:
+      - http:
+          path: /users
+          method: GET
+          authorizer:
+            name: cognitoAuthorizer
+            type: token
+            arn: ${self:custom.cognitoUserPoolJwtArn}
+
+resources:
+  Resources:
+    UsersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.USERS_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+
+custom:
+  cognitoUserPoolId: YOUR_USER_POOL_ID
+  cognitoUserPoolJwtArn: "arn:aws:cognito-idp:${self:provider.region}:#{AWS::AccountId}:userpool/${self:custom.cognitoUserPoolId}"
+```
+
+This backend service integration approach ensures that your Lambda functions can securely access user context from the authorizer, check permissions, and implement tenant isolation for data access.
+
+## Multi-Tenant Data Scoping
+
+This section explains how to implement multi-tenant data scoping in your backend services.
+
+### 1. Implementing Tenant-Aware Data Access
+
+For multi-tenant applications, create a data access layer that automatically filters data by tenant:
+
+```javascript
+// repositories/userRepository.js
+const { getDatabaseClient } = require('../utils/databaseClient');
+
+/**
+ * Repository for user data with tenant isolation
+ */
+class UserRepository {
+  constructor(userContext) {
+    this.userContext = userContext;
+    this.dbClient = getDatabaseClient(userContext);
+    this.tableName = process.env.USERS_TABLE_NAME;
+  }
+  
+  /**
+   * Get users with tenant isolation
+   */
+  async getUsers() {
+    const { tenantId, role } = this.userContext;
+    
+    // For admin users, optionally bypass tenant filtering
+    const params = role === 'Admin' && !tenantId
+      ? {
+          TableName: this.tableName
+        }
+      : {
+          TableName: this.tableName,
+          FilterExpression: 'tenantId = :tenantId',
+          ExpressionAttributeValues: {
+            ':tenantId': tenantId
+          }
+        };
+    
+    const result = await this.dbClient.scan(params);
+    return result.Items;
+  }
+  
+  /**
+   * Get a user by ID with tenant isolation
+   */
+  async getUserById(userId) {
+    const { tenantId, role } = this.userContext;
+    
+    const params = {
+      TableName: this.tableName,
+      Key: { id: userId }
+    };
+    
+    const result = await this.dbClient.getItem(params);
+    const user = result.Item;
+    
+    // Enforce tenant isolation (except for admins)
+    if (
+      user && 
+      role !== 'Admin' && 
+      tenantId && 
+      user.tenantId !== tenantId
+    ) {
+      return null; // User belongs to a different tenant
+    }
+    
+    return user;
+  }
+  
+  /**
+   * Create a new user with tenant ID
+   */
+  async createUser(userData) {
+    const { tenantId } = this.userContext;
+    
+    // Ensure tenantId is set to the user's tenant
+    const userWithTenant = {
+      ...userData,
+      tenantId: tenantId,
+      createdAt: new Date().toISOString()
+    };
+    
+    const params = {
+      TableName: this.tableName,
+      Item: userWithTenant
+    };
+    
+    await this.dbClient.putItem(params);
+    return userWithTenant;
+  }
+  
+  /**
+   * Update a user with tenant isolation
+   */
+  async updateUser(userId, userData) {
+    // First check if user exists and belongs to the same tenant
+    const existingUser = await this.getUserById(userId);
+    
+    if (!existingUser) {
+      throw new Error('User not found');
+    }
+    
+    // Prevent changing the tenantId
+    const { tenantId, ...updateData } = userData;
+    
+    // Build update expression
+    const updateExpression = Object.keys(updateData)
+      .map(key => `${key} = :${key}`)
+      .join(', ');
+    
+    // Build expression attribute values
+    const expressionAttributeValues = Object.entries(updateData)
+      .reduce((acc, [key, value]) => {
+        acc[`:${key}`] = value;
+        return acc;
+      }, {});
+    
+    const params = {
+      TableName: this.tableName,
+      Key: { id: userId },
+      UpdateExpression: `SET ${updateExpression}`,
+      ExpressionAttributeValues: expressionAttributeValues,
+      ReturnValues: 'ALL_NEW'
+    };
+    
+    const result = await this.dbClient.updateItem(params);
+    return result.Attributes;
+  }
+  
+  /**
+   * Delete a user with tenant isolation
+   */
+  async deleteUser(userId) {
+    // First check if user exists and belongs to the same tenant
+    const existingUser = await this.getUserById(userId);
+    
+    if (!existingUser) {
+      throw new Error('User not found');
+    }
+    
+    const params = {
+      TableName: this.tableName,
+      Key: { id: userId }
+    };
+    
+    await this.dbClient.deleteItem(params);
+    return { id: userId, deleted: true };
+  }
+}
+
+module.exports = UserRepository;
+```
+
+### 2. Using the Repository in Handlers
+
+Integrate the repository with your Lambda handlers:
+
+```javascript
+// handlers/userHandler.js
+const { requireAuth } = require('../middleware/authMiddleware');
+const UserRepository = require('../repositories/userRepository');
+
+// Get all users (requires users:read permission)
+const getAllUsers = async (event) => {
+  const { userContext } = event;
+  
+  // Create repository with user context
+  const userRepository = new UserRepository(userContext);
+  
+  // Get users with tenant isolation
+  const users = await userRepository.getUsers();
+  
+  return {
+    statusCode: 200,
+    headers: {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Credentials': true
+    },
+    body: JSON.stringify({ users })
+  };
+};
+
+// Create a new user (requires users:write permission)
+const createUser = async (event) => {
+  const { userContext } = event;
+  const userData = JSON.parse(event.body || '{}');
+  
+  // Create repository with user context
+  const userRepository = new UserRepository(userContext);
+  
+  // Create user with tenant isolation
+  const newUser = await userRepository.createUser(userData);
+  
+  return {
+    statusCode: 201,
+    headers: {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Credentials': true
+    },
+    body: JSON.stringify({ user: newUser })
+  };
+};
+
+// Export handlers with middleware applied
+module.exports = {
+  getAllUsers: requireAuth('users', 'read')(getAllUsers),
+  createUser: requireAuth('users', 'write')(createUser)
+};
+```
+
+### 3. Acquiring Sub-System API Keys
+
+For accessing external APIs, implement a similar pattern:
+
+```javascript
+// utils/externalApiClient.js
+const axios = require('axios');
+
+/**
+ * Get a client for external API with appropriate credentials
+ */
+const getExternalApiClient = (userContext) => {
+  // Extract API credentials
+  const credentials = userContext.subsystemCredentials?.externalApi;
+  
+  if (!credentials) {
+    throw new Error('External API credentials not available');
+  }
+  
+  // Create axios instance with API key
+  const apiClient = axios.create({
+    baseURL: process.env.EXTERNAL_API_URL,
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': credentials.apiKey
+    }
+  });
+  
+  return apiClient;
+};
+
+module.exports = {
+  getExternalApiClient
+};
+```
+
+### 4. Setting Up Serverless Configuration
+
+For serverless deployments, create a serverless.yml configuration:
+
+```yaml
+# serverless.yml
+service: your-app-api
+
+provider:
+  name: aws
+  runtime: nodejs14.x
+  region: us-east-1
+  stage: ${opt:stage, 'dev'}
+  environment:
+    USERS_TABLE_NAME: ${self:service}-users-${self:provider.stage}
+    EXTERNAL_API_URL: https://api.example.com
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+      Resource:
+        - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.USERS_TABLE_NAME}"
+
+functions:
+  api:
+    handler: index.handler
+    events:
+      - http:
+          path: /users
+          method: GET
+          authorizer:
+            name: cognitoAuthorizer
+            type: token
+            arn: ${self:custom.cognitoUserPoolJwtArn}
+      - http:
+          path: /users
+          method: POST
+          authorizer:
+            name: cognitoAuthorizer
+            type: token
+            arn: ${self:custom.cognitoUserPoolJwtArn}
+      # Add more routes as needed
+
+resources:
+  Resources:
+    UsersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.USERS_TABLE_NAME}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+
+custom:
+  cognitoUserPoolId: YOUR_USER_POOL_ID
+  cognitoUserPoolJwtArn: "arn:aws:cognito-idp:${self:provider.region}:#{AWS::AccountId}:userpool/${self:custom.cognitoUserPoolId}"
+```
+
+This completes the backend service integration for your authentication system, providing a secure and scalable way to access and manipulate data based on user roles, permissions, and tenant isolation. 

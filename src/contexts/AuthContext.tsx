@@ -4,6 +4,7 @@ import {
   signIn, 
   signOut,
   getCurrentUser, 
+  confirmSignIn,
   type SignInOutput
 } from 'aws-amplify/auth';
 
@@ -22,7 +23,12 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   isAuthenticated: boolean;
+  newPasswordRequired: boolean;
+  challengeUser: any;
+  tempUsername: string;
   login: (username: string, password: string) => Promise<void>;
+  completeNewPassword: (newPassword: string) => Promise<void>;
+  cancelNewPassword: () => void;
   logout: () => Promise<void>;
   getIdToken: () => Promise<string | null>;
 }
@@ -33,6 +39,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [newPasswordRequired, setNewPasswordRequired] = useState(false);
+  const [challengeUser, setChallengeUser] = useState<any>(null);
+  const [tempUsername, setTempUsername] = useState<string>('');
 
   useEffect(() => {
     // Check if user is already authenticated
@@ -78,6 +87,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log('Login attempt starting');
       setLoading(true);
+      setTempUsername(username);
       
       // Use the signIn function from Amplify Auth v6
       const signInOutput = await signIn({
@@ -110,6 +120,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
         
         setIsAuthenticated(true);
+      } else if (signInOutput.nextStep?.signInStep === 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED') {
+        // Handle new password required challenge
+        console.log('New password required for user');
+        setChallengeUser(signInOutput);
+        setNewPasswordRequired(true);
       } else {
         // Handle other authentication steps if needed (MFA, etc.)
         console.log('Additional authentication steps required:', signInOutput.nextStep?.signInStep);
@@ -146,11 +161,70 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const completeNewPassword = async (newPassword: string) => {
+    try {
+      setLoading(true);
+      
+      if (!challengeUser) {
+        throw new Error('No challenge user available');
+      }
+      
+      console.log('Completing new password challenge');
+      const confirmResult = await confirmSignIn({
+        challengeResponse: newPassword
+      });
+      
+      console.log('Password change result:', confirmResult);
+      
+      if (confirmResult.isSignedIn) {
+        // Successfully set new password, now get user session
+        const session = await fetchAuthSession();
+        const authUser = await getCurrentUser();
+        
+        // Extract tokens
+        const idToken = session.tokens?.idToken?.toString() || '';
+        const accessToken = session.tokens?.accessToken?.toString() || '';
+        
+        console.log('Password change successful, user ID:', authUser.userId);
+        
+        setUser({
+          id: authUser.userId,
+          username: authUser.username,
+          email: authUser.signInDetails?.loginId || '',
+          name: '', // Fetch user attributes if needed
+          agency: '', // Fetch user attributes if needed
+          user_role: '', // Fetch user attributes if needed
+          idToken,
+          accessToken
+        });
+        
+        setIsAuthenticated(true);
+        setNewPasswordRequired(false);
+        setChallengeUser(null);
+      } else {
+        // Handle unexpected result
+        throw new Error('Password change completed but sign-in was not successful');
+      }
+    } catch (error: any) {
+      console.error('Error during password change:', error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const cancelNewPassword = () => {
+    setNewPasswordRequired(false);
+    setChallengeUser(null);
+  };
+
   const logout = async () => {
     try {
       await signOut();
       setUser(null);
       setIsAuthenticated(false);
+      setNewPasswordRequired(false);
+      setChallengeUser(null);
     } catch (error) {
       console.error('Error during logout:', error);
       throw error;
@@ -187,8 +261,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       value={{ 
         user, 
         loading, 
-        isAuthenticated, 
+        isAuthenticated,
+        newPasswordRequired,
+        challengeUser,
+        tempUsername,
         login, 
+        completeNewPassword,
+        cancelNewPassword,
         logout, 
         getIdToken 
       }}

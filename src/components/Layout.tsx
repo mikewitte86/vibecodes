@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldIcon, BarChart2Icon, CheckSquareIcon, HomeIcon, UsersIcon, RefreshCcwIcon, TrendingUpIcon, FileTextIcon, ChevronLeftIcon, ChevronRightIcon, MenuIcon } from 'lucide-react';
+import { ShieldIcon, BarChart2Icon, CheckSquareIcon, HomeIcon, UsersIcon, RefreshCcwIcon, TrendingUpIcon, FileTextIcon, ChevronLeftIcon, ChevronRightIcon, MenuIcon, UploadIcon, DatabaseIcon } from 'lucide-react';
 import { Logo } from './common/Logo';
 import { GlobalSearchBar } from './common/GlobalSearchBar';
 import { UserProfileButton } from './auth/UserProfileButton';
@@ -55,6 +55,14 @@ export const Layout: React.FC<LayoutProps> = ({
       view: 'invoices'
     }]
   }, {
+    section: 'ultron',
+    title: 'Ultron Outputs',
+    items: [{
+      title: 'Customers',
+      icon: UsersIcon,
+      view: 'customers'
+    }]
+  }, {
     section: 'inputs',
     title: 'Feed Ultron',
     items: [{
@@ -65,6 +73,10 @@ export const Layout: React.FC<LayoutProps> = ({
       title: 'New Contact',
       icon: UsersIcon,
       view: 'newContact'
+    }, {
+      title: 'Upload Document',
+      icon: UploadIcon,
+      view: 'uploadDocument'
     }]
   }, {
     section: 'tasks',

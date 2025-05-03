@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout } from './components/Layout';
 import { Dashboard } from './components/outputs/Dashboard';
 import { CompanyList } from './components/outputs/CompanyList';
@@ -8,6 +8,7 @@ import { NewBusiness } from './components/outputs/NewBusiness';
 import { Invoices } from './components/outputs/Invoices';
 import { NewPolicy } from './components/inputs/NewPolicy';
 import { NewContact } from './components/inputs/NewContact';
+import { UploadDocument } from './components/inputs/UploadDocument';
 import { TaskBoard } from './components/tasks/TaskBoard';
 import { PolicyView } from './components/views/PolicyView';
 import { ContactView } from './components/views/ContactView';
@@ -19,6 +20,10 @@ import { SearchProvider } from './components/search/SearchContext';
 import { GlobalSearch } from './components/search/GlobalSearch';
 import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
+import { setupCorsDisabler } from './corsDisabler';
+import { CustomerList } from './components/ultron/CustomerList';
+import { CustomerDocuments } from './components/ultron/CustomerDocuments';
+import { CorsDebugger } from './components/common/CorsDebugger';
 
 // Define type for dashboard props
 interface DashboardProps {
@@ -37,10 +42,23 @@ interface Company {
   hubspotUrl: string;
 }
 
+// Define a type for customer
+interface Customer {
+  id: string;
+  name: string;
+  status: string;
+}
+
 export function App() {
+  // Initialize CORS disabler for development
+  useEffect(() => {
+    setupCorsDisabler();
+  }, []);
+
   const [currentView, setCurrentView] = useState('dashboard');
   const [currentSection, setCurrentSection] = useState('outputs');
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [taskFilter, setTaskFilter] = useState({
     status: 'all',
     priority: 'all'
@@ -108,6 +126,17 @@ export function App() {
     setCurrentView('companyProfile');
   };
 
+  const handleCustomerClick = (customer: Customer) => {
+    setSelectedCustomer(customer);
+    setPreviousView('customers');
+    setCurrentView('customerDocuments');
+  };
+
+  const handleBackFromCustomerDocuments = () => {
+    setCurrentView('customers');
+    setSelectedCustomer(null);
+  };
+
   const renderContent = () => {
     switch (currentView) {
       case 'dashboard':
@@ -135,6 +164,18 @@ export function App() {
           setSelectedCompany(company);
           setCurrentView('companyProfile');
         }} />;
+      case 'customers':
+        return <CustomerList onSelectCustomer={handleCustomerClick} />;
+      case 'customerDocuments':
+        return selectedCustomer ? (
+          <CustomerDocuments 
+            customerId={selectedCustomer.id} 
+            customerName={selectedCustomer.name}
+            onBack={handleBackFromCustomerDocuments}
+          />
+        ) : (
+          <div>Error: No customer selected</div>
+        );
       case 'companyProfile':
         return <CompanyProfile company={selectedCompany} onBack={() => setCurrentView(previousView)} onPolicyClick={handlePolicyClick} />;
       case 'renewals':
@@ -147,6 +188,8 @@ export function App() {
         return <NewPolicy />;
       case 'newContact':
         return <NewContact />;
+      case 'uploadDocument':
+        return <UploadDocument />;
       case 'tasks':
         return <TaskBoard initialFilter={taskFilter} />;
       case 'policies':
@@ -175,6 +218,7 @@ export function App() {
               <GlobalSearch />
             </Layout>
           </ProtectedRoute>
+          {process.env.NODE_ENV === 'development' && <CorsDebugger />}
         </div>
       </SearchProvider>
     </AuthProvider>

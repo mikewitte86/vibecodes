@@ -1,10 +1,16 @@
-'use client';
+"use client";
 
-import { createContext, useContext, useEffect, useState } from 'react';
-import { signIn as amplifySignIn, signOut as amplifySignOut, getCurrentUser, AuthUser } from 'aws-amplify/auth';
-import { useRouter } from 'next/navigation';
-import { configureAmplify } from '@/lib/amplify';
-import Cookies from 'js-cookie';
+import { createContext, useContext, useEffect, useState } from "react";
+import {
+  signIn as amplifySignIn,
+  signOut as amplifySignOut,
+  getCurrentUser,
+  AuthUser,
+} from "aws-amplify/auth";
+import { useRouter, usePathname } from "next/navigation";
+import { configureAmplify } from "@/lib/amplify";
+import Cookies from "js-cookie";
+import { useLoader } from "@/contexts/loader-context";
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -21,6 +27,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<AuthUser | null>(null);
   const router = useRouter();
+  const pathname = usePathname();
+  const { setShow } = useLoader();
+
+  useEffect(() => {
+    if (isLoading && pathname !== "/auth/signin") {
+      setShow(true);
+    } else {
+      setShow(false);
+    }
+  }, [isLoading, pathname, setShow]);
 
   useEffect(() => {
     const initAuth = async () => {
@@ -29,11 +45,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const currentUser = await getCurrentUser();
         setUser(currentUser);
         setIsAuthenticated(true);
-        Cookies.set('auth-token', 'true', { expires: 7 });
+        Cookies.set("auth-token", "true", { expires: 7 });
       } catch {
         setUser(null);
         setIsAuthenticated(false);
-        Cookies.remove('auth-token');
+        Cookies.remove("auth-token");
       } finally {
         setIsLoading(false);
       }
@@ -48,8 +64,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const currentUser = await getCurrentUser();
       setUser(currentUser);
       setIsAuthenticated(true);
-      Cookies.set('auth-token', 'true', { expires: 7 });
-      router.push('/');
+      Cookies.set("auth-token", "true", { expires: 7 });
+      router.push("/");
     } catch (error) {
       throw error;
     }
@@ -60,19 +76,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await amplifySignOut();
       setUser(null);
       setIsAuthenticated(false);
-      Cookies.remove('auth-token');
-      router.push('/auth/signin');
+      Cookies.remove("auth-token");
+      router.push("/auth/signin");
     } catch (error) {
       throw error;
     }
   };
 
-  if (isLoading) {
-    return <div>Loading...</div>;
-  }
-
   return (
-    <AuthContext.Provider value={{ isAuthenticated, isLoading, signIn, signOut, user }}>
+    <AuthContext.Provider
+      value={{ isAuthenticated, isLoading, signIn, signOut, user }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -81,7 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
-} 
+}

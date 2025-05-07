@@ -15,6 +15,8 @@ import { Label } from "@/components/ui/label";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useEffect, useState } from "react";
+import { useLoader } from "@/contexts/loader-context";
 
 const signInSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -25,6 +27,7 @@ type SignInFormData = z.infer<typeof signInSchema>;
 
 export default function SignIn() {
   const { signIn, isAuthenticated, isLoading } = useAuth();
+  const { setShow } = useLoader();
 
   const {
     control,
@@ -39,10 +42,29 @@ export default function SignIn() {
     },
   });
 
+  const [showLocalLoader, setShowLocalLoader] = useState(false);
+  useEffect(() => {
+    let timer: NodeJS.Timeout | undefined;
+    if (showLocalLoader) {
+      setShow(true);
+      timer = setTimeout(() => setShow(false), 2000);
+    }
+    return () => timer && clearTimeout(timer);
+  }, [showLocalLoader, setShow]);
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      setShow(false);
+    }
+  }, [isLoading, isAuthenticated, setShow]);
+
   const onSubmit = async (data: SignInFormData) => {
+    setShowLocalLoader(true);
     try {
       await signIn(data.username, data.password);
     } catch (error: unknown) {
+      setShowLocalLoader(false);
+      setShow(false);
       const errorMessage =
         error instanceof Error ? error.message : "Failed to sign in";
       setError("root", {
@@ -51,25 +73,9 @@ export default function SignIn() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div>Loading...</div>
-      </div>
-    );
-  }
-
-  if (isAuthenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div>Redirecting to dashboard...</div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen flex items-center justify-center">
-      <Card className="w-[400px]">
+      <Card className="w-[400px] pt-6">
         <CardHeader>
           <CardTitle>Sign In</CardTitle>
           <CardDescription>

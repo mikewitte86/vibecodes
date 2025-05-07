@@ -5,6 +5,8 @@ import { Providers } from "@/components/providers";
 import { Sidebar } from "@/components/sidebar";
 import { SidebarProvider } from "@/contexts/sidebar-context";
 import { ContentWrapper } from "@/components/content-wrapper";
+import { LoaderProvider } from "@/contexts/loader-context";
+import ClientLayoutContent from "@/components/client-layout-content";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -21,20 +23,22 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <Providers>
-          <SidebarProvider>
-            <div className="flex min-h-screen">
-              <Sidebar />
-              <main className="flex-1">
-                <ContentWrapper>
-                  <div className="container mx-auto px-4 py-8">
-                    {children}
-                  </div>
-                </ContentWrapper>
-              </main>
-            </div>
-          </SidebarProvider>
-        </Providers>
+        <LoaderProvider>
+          <ClientLayoutContent>
+            <Providers>
+              <SidebarProvider>
+                <div className="flex min-h-screen">
+                  <Sidebar />
+                  <main className="flex-1">
+                    <ContentWrapper>
+                      <div className="container max-w-none pb-8">{children}</div>
+                    </ContentWrapper>
+                  </main>
+                </div>
+              </SidebarProvider>
+            </Providers>
+          </ClientLayoutContent>
+        </LoaderProvider>
       </body>
     </html>
   );

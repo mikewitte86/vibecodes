@@ -31,7 +31,7 @@ export default function RootLayout({
                   <Sidebar />
                   <main className="flex-1">
                     <ContentWrapper>
-                      <div className="container max-w-none pb-8">{children}</div>
+                      <div className="container max-w-none">{children}</div>
                     </ContentWrapper>
                   </main>
                 </div>

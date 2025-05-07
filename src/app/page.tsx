@@ -5,7 +5,6 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  CardDescription,
 } from "@/components/ui/card";
 import {
   ArrowUpRight,
@@ -20,6 +19,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
+import Link from "next/link";
 
 export default function Home() {
   const metrics = [
@@ -131,11 +131,11 @@ export default function Home() {
   ];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 pb-8">
       <div className="px-6 bg-gray-150 border-b border-gray-200 py-4">
         <h1 className="text-2xl font-bold">Dashboard</h1>
         <p className="text-gray-500 text-sm mt-1">
-          Overview of your agency's key metrics and performance.
+          Overview of your agency&apos;s key metrics and performance.
         </p>
       </div>
       <div className="px-6 space-y-8">
@@ -254,12 +254,12 @@ export default function Home() {
               </CardTitle>
             </div>
             <div className="text-right">
-              <a
+              <Link
                 href="/"
                 className="text-blue-600 text-sm font-medium hover:underline"
               >
                 See More &rarr;
-              </a>
+              </Link>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">

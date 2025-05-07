@@ -1,6 +1,13 @@
 "use client";
 
-import { createContext, useContext, useState, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from "react";
+import { usePathname } from "next/navigation";
 
 interface SidebarContextType {
   isCollapsed: boolean;
@@ -10,7 +17,42 @@ interface SidebarContextType {
 const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
 
 export function SidebarProvider({ children }: { children: ReactNode }) {
-  const [isCollapsed, setIsCollapsed] = useState(true);
+  const [isCollapsed, setIsCollapsedState] = useState<boolean | undefined>(
+    undefined,
+  );
+  const pathname = usePathname();
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.innerWidth >= 1024) {
+      const stored = localStorage.getItem("sidebar-collapsed");
+      setIsCollapsedState(stored === null ? false : stored === "true");
+    } else {
+      setIsCollapsedState(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.innerWidth >= 1024 && isCollapsed !== undefined) {
+      localStorage.setItem("sidebar-collapsed", String(isCollapsed));
+    }
+  }, [isCollapsed]);
+
+  const setIsCollapsed = (value: boolean) => {
+    setIsCollapsedState(value);
+    if (typeof window !== "undefined" && window.innerWidth >= 1024) {
+      localStorage.setItem("sidebar-collapsed", String(value));
+    }
+  };
+
+  if (isCollapsed === undefined && pathname && pathname.startsWith("/auth")) {
+    return (
+      <div className="flex h-full flex-col fixed left-0 top-0 bottom-0 bg-gray-900 text-white transition-all duration-300 z-30 overflow-hidden w-16" />
+    );
+  }
+
+  if (isCollapsed === undefined) return null;
 
   return (
     <SidebarContext.Provider value={{ isCollapsed, setIsCollapsed }}>

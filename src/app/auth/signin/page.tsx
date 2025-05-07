@@ -17,6 +17,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useEffect, useState } from "react";
 import { useLoader } from "@/contexts/loader-context";
+import Image from "next/image";
 
 const signInSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -76,7 +77,17 @@ export default function SignIn() {
   return (
     <div className="min-h-screen flex items-center justify-center">
       <Card className="w-[400px] pt-6">
-        <CardHeader>
+        <CardHeader className="text-center">
+          <div className="flex flex-col items-center mb-2">
+            <Image
+              src="/logoBlue.png"
+              alt="Logo"
+              width={180}
+              height={80}
+              className="mb-2"
+              priority
+            />
+          </div>
           <CardTitle>Sign In</CardTitle>
           <CardDescription>
             Enter your credentials to access your account

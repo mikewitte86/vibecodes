@@ -1,23 +1,39 @@
 "use client";
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState, useMemo, useCallback } from "react";
 
-const LoaderContext = createContext<{
+interface LoaderContextType {
   show: boolean;
   setShow: (show: boolean) => void;
-}>({
-  show: false,
-  setShow: () => {},
-});
+}
+
+const LoaderContext = createContext<LoaderContextType | undefined>(undefined);
 
 export function LoaderProvider({ children }: { children: React.ReactNode }) {
-  const [show, setShow] = useState(false);
+  const [show, setShowState] = useState(false);
+
+  const setShow = useCallback((value: boolean) => {
+    setShowState(value);
+  }, []);
+
+  const value = useMemo(
+    () => ({
+      show,
+      setShow,
+    }),
+    [show, setShow]
+  );
+
   return (
-    <LoaderContext.Provider value={{ show, setShow }}>
+    <LoaderContext.Provider value={value}>
       {children}
     </LoaderContext.Provider>
   );
 }
 
 export function useLoader() {
-  return useContext(LoaderContext);
+  const context = useContext(LoaderContext);
+  if (context === undefined) {
+    throw new Error("useLoader must be used within a LoaderProvider");
+  }
+  return context;
 } 

@@ -19,7 +19,7 @@ A modern dashboard application built with Next.js, TypeScript, Tailwind CSS, and
 1. Clone the repository
 2. Install dependencies:
    ```bash
-   yarn install
+   npm install
    ```
 
 3. Create a `.env.local` file in the root directory with the following variables:
@@ -32,7 +32,7 @@ A modern dashboard application built with Next.js, TypeScript, Tailwind CSS, and
 
 4. Run the development server:
    ```bash
-   yarn dev
+   npm run dev
    ```
 
 5. Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
@@ -59,10 +59,10 @@ The app uses React Hook Form with Zod for form validation. This provides:
 
 ## Development
 
-- `yarn dev` - Start development server
-- `yarn build` - Build for production
-- `yarn start` - Start production server
-- `yarn lint` - Run ESLint
-- `yarn format` - Format code with Prettier
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run start` - Start production server
+- `npm run lint` - Run ESLint
+- `npm run format` - Format code with Prettier
 
 This project uses [`

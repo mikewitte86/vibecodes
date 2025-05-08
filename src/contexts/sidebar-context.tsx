@@ -5,6 +5,8 @@ import {
   useContext,
   useState,
   useEffect,
+  useCallback,
+  useMemo,
   ReactNode,
 } from "react";
 import { usePathname } from "next/navigation";
@@ -22,7 +24,7 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
   );
   const pathname = usePathname();
 
-  useEffect(() => {
+  const initializeSidebar = useCallback(() => {
     if (typeof window === "undefined") return;
     if (window.innerWidth >= 1024) {
       const stored = localStorage.getItem("sidebar-collapsed");
@@ -33,18 +35,30 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    initializeSidebar();
+  }, [initializeSidebar]);
+
+  useEffect(() => {
     if (typeof window === "undefined") return;
     if (window.innerWidth >= 1024 && isCollapsed !== undefined) {
       localStorage.setItem("sidebar-collapsed", String(isCollapsed));
     }
   }, [isCollapsed]);
 
-  const setIsCollapsed = (value: boolean) => {
+  const setIsCollapsed = useCallback((value: boolean) => {
     setIsCollapsedState(value);
     if (typeof window !== "undefined" && window.innerWidth >= 1024) {
       localStorage.setItem("sidebar-collapsed", String(value));
     }
-  };
+  }, []);
+
+  const value = useMemo(
+    () => ({
+      isCollapsed: isCollapsed as boolean,
+      setIsCollapsed,
+    }),
+    [isCollapsed, setIsCollapsed]
+  );
 
   if (isCollapsed === undefined && pathname && pathname.startsWith("/auth")) {
     return (
@@ -55,7 +69,7 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
   if (isCollapsed === undefined) return null;
 
   return (
-    <SidebarContext.Provider value={{ isCollapsed, setIsCollapsed }}>
+    <SidebarContext.Provider value={value}>
       {children}
     </SidebarContext.Provider>
   );

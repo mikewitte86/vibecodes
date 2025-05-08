@@ -13,12 +13,14 @@ import {
   ChevronRightIcon,
   UserIcon,
   UsersIcon,
+  FileText,
 } from "lucide-react";
 import Image from "next/image";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboardIcon },
   { name: "Companies", href: "/companies", icon: UsersIcon },
+  { name: "Policies", href: "/policies", icon: FileText },
 ];
 
 export function Sidebar() {

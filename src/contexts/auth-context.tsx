@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
 import {
   signIn as amplifySignIn,
   signOut as amplifySignOut,
@@ -23,70 +23,94 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const [state, setState] = useState<{
+    isAuthenticated: boolean;
+    isLoading: boolean;
+    user: AuthUser | null;
+  }>({
+    isAuthenticated: false,
+    isLoading: true,
+    user: null,
+  });
+
   const router = useRouter();
   const pathname = usePathname();
   const { setShow } = useLoader();
 
   useEffect(() => {
-    if (isLoading && pathname !== "/auth/signin") {
+    if (state.isLoading && pathname !== "/auth/signin") {
       setShow(true);
     } else {
       setShow(false);
     }
-  }, [isLoading, pathname, setShow]);
+  }, [state.isLoading, pathname, setShow]);
 
-  useEffect(() => {
-    const initAuth = async () => {
-      try {
-        configureAmplify();
-        const currentUser = await getCurrentUser();
-        setUser(currentUser);
-        setIsAuthenticated(true);
-        Cookies.set("auth-token", "true", { expires: 7 });
-      } catch {
-        setUser(null);
-        setIsAuthenticated(false);
-        Cookies.remove("auth-token");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    initAuth();
+  const initAuth = useCallback(async () => {
+    try {
+      configureAmplify();
+      const currentUser = await getCurrentUser();
+      setState({
+        isAuthenticated: true,
+        isLoading: false,
+        user: currentUser,
+      });
+      Cookies.set("auth-token", "true", { expires: 7 });
+    } catch {
+      setState({
+        isAuthenticated: false,
+        isLoading: false,
+        user: null,
+      });
+      Cookies.remove("auth-token");
+    }
   }, []);
 
-  const signIn = async (username: string, password: string) => {
+  useEffect(() => {
+    initAuth();
+  }, [initAuth]);
+
+  const signIn = useCallback(async (username: string, password: string) => {
     try {
       await amplifySignIn({ username, password });
       const currentUser = await getCurrentUser();
-      setUser(currentUser);
-      setIsAuthenticated(true);
+      setState({
+        isAuthenticated: true,
+        isLoading: false,
+        user: currentUser,
+      });
       Cookies.set("auth-token", "true", { expires: 7 });
       router.push("/");
     } catch (error) {
       throw error;
     }
-  };
+  }, [router]);
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     try {
       await amplifySignOut();
-      setUser(null);
-      setIsAuthenticated(false);
+      setState({
+        isAuthenticated: false,
+        isLoading: false,
+        user: null,
+      });
       Cookies.remove("auth-token");
       router.push("/auth/signin");
     } catch (error) {
       throw error;
     }
-  };
+  }, [router]);
+
+  const value = useMemo(
+    () => ({
+      ...state,
+      signIn,
+      signOut,
+    }),
+    [state, signIn, signOut]
+  );
 
   return (
-    <AuthContext.Provider
-      value={{ isAuthenticated, isLoading, signIn, signOut, user }}
-    >
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

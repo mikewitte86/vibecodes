@@ -1,14 +1,6 @@
 "use client";
 
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  ArrowUpRight,
-  ArrowDownRight,
   Users,
   FileText,
   RefreshCw,
@@ -18,8 +10,9 @@ import {
   UserPlus,
   AlertCircle,
 } from "lucide-react";
-import { twMerge } from "tailwind-merge";
-import Link from "next/link";
+import { MetricCard } from "@/components/dashboard/metric-card";
+import { StatusCard } from "@/components/dashboard/status-card";
+import { ActivityCard } from "@/components/dashboard/activity-card";
 
 export default function Home() {
   const metrics = [
@@ -141,155 +134,26 @@ export default function Home() {
       <div className="px-6 space-y-8">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {metrics.map((m, i) => (
-            <Card
-              key={i}
-              className="shadow-md rounded-xl border border-gray-200 bg-white"
-            >
-              <CardHeader className="bg-gray-50 border-b border-gray-200 rounded-t-xl px-6 py-4 flex flex-row items-center justify-between">
-                <div className="flex items-center gap-2">{m.icon}</div>
-                <div className="text-right">
-                  <CardTitle className="text-sm font-semibold text-gray-700">
-                    {m.title}
-                  </CardTitle>
-                  <div className="text-2xl font-bold text-gray-900">
-                    {m.value}
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-0">
-                {m.trend && (
-                  <div
-                    className={twMerge(
-                      "flex items-center text-sm font-medium",
-                      m.trend.positive ? "text-green-600" : "text-red-600",
-                    )}
-                  >
-                    {m.trend.positive ? (
-                      <ArrowUpRight className="h-4 w-4 mr-1" />
-                    ) : (
-                      <ArrowDownRight className="h-4 w-4 mr-1" />
-                    )}
-                    {m.trend.value}
-                    {m.trend.text && (
-                      <span className="ml-1 text-gray-500 font-normal">
-                        {m.trend.text}
-                      </span>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <MetricCard key={i} {...m} />
           ))}
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card className="shadow rounded-xl border border-gray-200 bg-white">
-            <CardHeader className="bg-gray-50 border-b border-gray-200 rounded-t-xl px-6 py-4 flex flex-row items-center gap-2">
-              <RefreshCw className="h-5 w-5 text-blue-600" />
-              <CardTitle className="text-base font-semibold text-gray-800">
-                Renewal Status
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {renewalStatus.map((item, i) => (
-                <div key={i}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      {item.icon}
-                      <div>
-                        <div className="font-medium text-gray-900 text-sm">
-                          {item.label}
-                        </div>
-                        <div className="text-xs text-gray-500">{item.sub}</div>
-                      </div>
-                    </div>
-                    <div className="font-semibold text-gray-700 text-base">
-                      {item.value}
-                    </div>
-                  </div>
-                  {i < renewalStatus.length - 1 && (
-                    <hr className="mt-3 border-gray-200" />
-                  )}
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-          <Card className="shadow rounded-xl border border-gray-200 bg-white">
-            <CardHeader className="bg-gray-50 border-b border-gray-200 rounded-t-xl px-6 py-4 flex flex-row items-center gap-2">
-              <DollarSign className="h-5 w-5 text-blue-600" />
-              <CardTitle className="text-base font-semibold text-gray-800">
-                Invoice Status
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {invoiceStatus.map((item, i) => (
-                <div key={i}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      {item.icon}
-                      <div>
-                        <div className="font-medium text-gray-900 text-sm">
-                          {item.label}
-                        </div>
-                        <div className="text-xs text-gray-500">{item.sub}</div>
-                      </div>
-                    </div>
-                    <div className="font-semibold text-gray-700 text-base">
-                      {item.value}
-                    </div>
-                  </div>
-                  {i < invoiceStatus.length - 1 && (
-                    <hr className="mt-3 border-gray-200" />
-                  )}
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+          <StatusCard
+            title="Renewal Status"
+            icon={<RefreshCw className="h-5 w-5 text-blue-600" />}
+            items={renewalStatus}
+          />
+          <StatusCard
+            title="Invoice Status"
+            icon={<DollarSign className="h-5 w-5 text-blue-600" />}
+            items={invoiceStatus}
+          />
         </div>
-        <Card className="shadow rounded-xl border border-gray-200 bg-white">
-          <CardHeader className="bg-gray-50 border-b border-gray-200 rounded-t-xl px-6 py-4 flex flex-row items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-blue-600" />
-              <CardTitle className="text-base font-semibold text-gray-800">
-                Recent Activity
-              </CardTitle>
-            </div>
-            <div className="text-right">
-              <Link
-                href="/"
-                className="text-blue-600 text-sm font-medium hover:underline"
-              >
-                See More &rarr;
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {recentActivity.map((activity, i) => (
-              <div key={i}>
-                <div className="flex items-start gap-4">
-                  <div className="mt-1">{activity.icon}</div>
-                  <div className="flex-1">
-                    <div className="font-medium text-gray-900 text-sm">
-                      {activity.title}
-                    </div>
-                    <div className="text-xs text-gray-500 mb-1">
-                      {activity.desc}
-                    </div>
-                    <div className="flex items-center text-xs text-gray-400 gap-2">
-                      <span>{activity.time}</span>
-                      <span className="flex items-center gap-1">
-                        {activity.userIcon}
-                        {activity.user}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                {i < recentActivity.length - 1 && (
-                  <hr className="mt-4 border-gray-200" />
-                )}
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+        <ActivityCard
+          title="Recent Activity"
+          icon={<FileText className="h-5 w-5 text-blue-600" />}
+          items={recentActivity}
+        />
       </div>
     </div>
   );

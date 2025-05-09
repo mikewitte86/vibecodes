@@ -1,0 +1,58 @@
+export const companies = [
+  {
+    name: "Acme Corporation",
+    policies: 3,
+    premium: "$24,500",
+    revenue: "$4,900",
+    hubspot: "#",
+  },
+  {
+    name: "Dynamic Designs",
+    policies: 1,
+    premium: "$12,400",
+    revenue: "$2,480",
+    hubspot: "#",
+  },
+  {
+    name: "Elite Enterprises",
+    policies: 3,
+    premium: "$27,500",
+    revenue: "$5,500",
+    hubspot: "#",
+  },
+  {
+    name: "Global Manufacturing",
+    policies: 5,
+    premium: "$56,200",
+    revenue: "$11,240",
+    hubspot: "#",
+  },
+  {
+    name: "Innovative Solutions",
+    policies: 4,
+    premium: "$32,100",
+    revenue: "$6,420",
+    hubspot: "#",
+  },
+  {
+    name: "Premier Products",
+    policies: 2,
+    premium: "$19,800",
+    revenue: "$3,960",
+    hubspot: "#",
+  },
+  {
+    name: "Stellar Services",
+    policies: 1,
+    premium: "$8,300",
+    revenue: "$1,660",
+    hubspot: "#",
+  },
+  {
+    name: "TechCorp Industries",
+    policies: 2,
+    premium: "$18,750",
+    revenue: "$3,750",
+    hubspot: "#",
+  },
+]; 

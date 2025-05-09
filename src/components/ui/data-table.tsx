@@ -17,7 +17,13 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { ArrowUp, ArrowDown } from "lucide-react";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 
 interface DataTableProps<TData, TValue> {
@@ -102,7 +108,7 @@ export function DataTable<TData, TValue>({
                   <TableHead
                     key={header.id}
                     onClick={header.column.getToggleSortingHandler()}
-                    className="select-none cursor-pointer bg-gray-50 font-semibold text-gray-700 px-1 sm:px-2 first:px-5 py-3 border-b border-gray-200 truncate"
+                    className="select-none cursor-pointer bg-gray-50 font-semibold text-xs text-gray-700 px-1 sm:px-2 first:px-5 py-3 border-b border-t border-gray-200 truncate"
                     style={{
                       userSelect: "none",
                       width: header.column.columnDef.size,
@@ -156,4 +162,4 @@ export function DataTable<TData, TValue>({
       </div>
     </div>
   );
-} 
+}

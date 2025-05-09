@@ -14,6 +14,9 @@ import {
   UserIcon,
   UsersIcon,
   FileText,
+  RefreshCcw,
+  FileSpreadsheet,
+  TrendingUp,
 } from "lucide-react";
 import Image from "next/image";
 
@@ -21,6 +24,9 @@ const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboardIcon },
   { name: "Companies", href: "/companies", icon: UsersIcon },
   { name: "Policies", href: "/policies", icon: FileText },
+  { name: "Next 90 Renewals", href: "/renewals", icon: RefreshCcw },
+  { name: "New Business", href: "/new-business", icon: TrendingUp },
+  { name: "Invoices", href: "/invoices", icon: FileSpreadsheet },
 ];
 
 export function Sidebar() {

@@ -1,6 +1,7 @@
 import { ExternalLink } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
 import { Company } from "@/types/tables";
+import { Customer } from "@/types/tables";
 
 export const companyColumns: ColumnDef<Company>[] = [
   {
@@ -50,5 +51,30 @@ export const companyColumns: ColumnDef<Company>[] = [
         HubSpot <ExternalLink className="h-4 w-4 inline" />
       </a>
     ),
+  },
+];
+
+export const customerColumns: ColumnDef<Customer>[] = [
+  {
+    accessorKey: "name",
+    header: () => <span>CUSTOMER NAME</span>,
+    size: 250,
+    cell: ({ row }) => (
+      <span className="font-medium text-gray-900 truncate block">
+        {row.getValue("name")}
+      </span>
+    ),
+  },
+  {
+    accessorKey: "email",
+    header: "EMAIL",
+    size: 200,
+    cell: ({ row }) => row.getValue("email"),
+  },
+  {
+    accessorKey: "phone",
+    header: "PHONE",
+    size: 150,
+    cell: ({ row }) => row.getValue("phone"),
   },
 ]; 

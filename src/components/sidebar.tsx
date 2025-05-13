@@ -17,16 +17,48 @@ import {
   RefreshCcw,
   FileSpreadsheet,
   TrendingUp,
+  Shield,
+  Upload,
+  ClipboardList,
+  UserPlus,
 } from "lucide-react";
 import Image from "next/image";
 
-const navigation = [
-  { name: "Dashboard", href: "/", icon: LayoutDashboardIcon },
-  { name: "Companies", href: "/companies", icon: UsersIcon },
-  { name: "Policies", href: "/policies", icon: FileText },
-  { name: "Next 90 Renewals", href: "/renewals", icon: RefreshCcw },
-  { name: "New Business", href: "/new-business", icon: TrendingUp },
-  { name: "Invoices", href: "/invoices", icon: FileSpreadsheet },
+const navigationSections = [
+  {
+    label: "DATA OUTPUTS",
+    items: [
+      { name: "Dashboard", href: "/", icon: LayoutDashboardIcon },
+      { name: "Companies", href: "/companies", icon: UsersIcon },
+      { name: "Policies", href: "/policies", icon: FileText },
+      { name: "Next 90 Renewals", href: "/renewals", icon: RefreshCcw },
+      { name: "New Business", href: "/new-business", icon: TrendingUp },
+      { name: "Invoices", href: "/invoices", icon: FileSpreadsheet },
+    ],
+  },
+  {
+    label: "ULTRON OUTPUTS",
+    items: [{ name: "Customers", href: "/customers", icon: UsersIcon }],
+  },
+  {
+    label: "FEED ULTRON",
+    items: [
+      { name: "New Policy", href: "/new-policy", icon: FileText },
+      { name: "New Contact", href: "/new-contact", icon: UserPlus },
+      { name: "Upload Document", href: "/upload-document", icon: Upload },
+    ],
+  },
+  {
+    label: "TASK MANAGEMENT",
+    items: [{ name: "Task Board", href: "/task-board", icon: ClipboardList }],
+  },
+  {
+    label: "ADMINISTRATIVE",
+    items: [
+      { name: "User Management", href: "/user-management", icon: UsersIcon },
+      { name: "Roles & Permissions", href: "/roles-permissions", icon: Shield },
+    ],
+  },
 ];
 
 export function Sidebar() {
@@ -66,25 +98,39 @@ export function Sidebar() {
           )}
         </Button>
       </div>
-      <nav className="flex-1 space-y-2 px-3 py-4">
-        {navigation.map((item) => {
-          const isActive = pathname === item.href;
-          return (
-            <Link
-              key={item.name}
-              href={item.href}
-              className={twMerge(
-                "flex items-center justify-start gap-3 rounded-lg px-3 h-9 py-2 text-sm font-medium transition-colors",
-                isActive
-                  ? "bg-gray-800 text-white"
-                  : "text-gray-400 hover:bg-gray-800 hover:text-white",
-              )}
-            >
-              <item.icon className="h-4 w-4 shrink-0" />
-              {!isCollapsed && <span>{item.name}</span>}
-            </Link>
-          );
-        })}
+      <nav
+        className={twMerge(
+          "flex-1 space-y-5 px-3 py-4",
+          isCollapsed && "space-y-5",
+        )}
+      >
+        {navigationSections.map((section) => (
+          <div key={section.label}>
+            {!isCollapsed && (
+              <div className="text-xs font-semibold text-gray-400 mb-2 px-2 tracking-widest">
+                {section.label}
+              </div>
+            )}
+            {section.items.map((item) => {
+              const isActive = pathname === item.href;
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={twMerge(
+                    "flex items-center mb-1 justify-start gap-3 rounded-lg px-3 h-9 py-2 text-sm font-medium transition-colors",
+                    isActive
+                      ? "bg-gray-800 text-white"
+                      : "text-gray-400 hover:bg-gray-800 hover:text-white",
+                  )}
+                >
+                  <item.icon className="h-4 w-4 shrink-0" />
+                  {!isCollapsed && <span>{item.name}</span>}
+                </Link>
+              );
+            })}
+          </div>
+        ))}
       </nav>
       <div className="border-t border-gray-800 p-3 space-y-2">
         <div

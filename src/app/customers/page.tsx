@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { RefreshCcw } from "lucide-react";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { get } from "@aws-amplify/api-rest";
-import { twMerge } from "tailwind-merge";
+import { cn } from "@/lib/utils";
 
 function useCustomersQuery() {
   return useQuery<Customer[], Error>({
@@ -68,7 +68,7 @@ export default function CustomersPage() {
           disabled={isFetching}
         >
           <RefreshCcw
-            className={twMerge("h-4 w-4", isFetching ? "animate-spin" : "")}
+            className={cn("h-4 w-4", isFetching ? "animate-spin" : "")}
           />
           &nbsp;Refresh
         </Button>

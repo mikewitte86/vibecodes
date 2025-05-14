@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowUpRight, ArrowDownRight } from "lucide-react";
-import { twMerge } from "tailwind-merge";
+import { cn } from "@/lib/utils";
 import { memo } from "react";
 
 export interface MetricCardProps {
@@ -34,7 +34,7 @@ export const MetricCard = memo(function MetricCard({
       <CardContent className="pt-0">
         {trend && (
           <div
-            className={twMerge(
+            className={cn(
               "flex items-center text-sm font-medium",
               trend.positive ? "text-green-600" : "text-red-600",
             )}

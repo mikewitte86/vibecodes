@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useSidebar } from "@/contexts/sidebar-context";
-import { twMerge } from "tailwind-merge";
+import { cn } from "@/lib/utils";
 
 export function ContentWrapper({ children }: { children: React.ReactNode }) {
   const { isCollapsed } = useSidebar();
@@ -11,7 +11,7 @@ export function ContentWrapper({ children }: { children: React.ReactNode }) {
 
   return (
     <div
-      className={twMerge(
+      className={cn(
         "transition-all duration-300",
         !isAuthPage && (isCollapsed ? "pl-16 lg:pl-16" : "pl-16 lg:pl-64"),
       )}

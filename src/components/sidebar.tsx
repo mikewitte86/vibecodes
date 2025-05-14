@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { twMerge } from "tailwind-merge";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import { useSidebar } from "@/contexts/sidebar-context";
@@ -72,7 +72,7 @@ export function Sidebar() {
 
   const SidebarContent = () => (
     <>
-      <div className="flex h-16 items-center justify-between gap-4 px-4 border-b border-gray-800">
+      <div className="flex h-16 shrink-0 items-center justify-between gap-4 px-4 border-b border-gray-800">
         {!isCollapsed && (
           <div className="flex items-center pl-1">
             <Image
@@ -99,8 +99,8 @@ export function Sidebar() {
         </Button>
       </div>
       <nav
-        className={twMerge(
-          "flex-1 space-y-5 px-3 py-4",
+        className={cn(
+          "flex-1 space-y-5 px-3 py-4 overflow-y-auto",
           isCollapsed && "space-y-5",
         )}
       >
@@ -117,7 +117,7 @@ export function Sidebar() {
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={twMerge(
+                  className={cn(
                     "flex items-center mb-1 justify-start gap-3 rounded-lg px-3 h-9 py-2 text-sm font-medium transition-colors",
                     isActive
                       ? "bg-gray-800 text-white"
@@ -134,7 +134,7 @@ export function Sidebar() {
       </nav>
       <div className="border-t border-gray-800 p-3 space-y-2">
         <div
-          className={twMerge(
+          className={cn(
             "flex items-center gap-3 px-1 py-2 text-sm text-gray-400",
             isCollapsed && "justify-center px-0",
           )}
@@ -150,13 +150,13 @@ export function Sidebar() {
         </div>
         <Button
           variant="ghost"
-          className={twMerge(
+          className={cn(
             "w-full cursor-pointer justify-start text-gray-400 hover:text-white hover:bg-gray-800",
             isCollapsed && "justify-center",
           )}
           onClick={() => signOut()}
         >
-          <LogOutIcon className={twMerge("h-5 w-5", !isCollapsed && "mr-3")} />
+          <LogOutIcon className={cn("h-5 w-5", !isCollapsed && "mr-3")} />
           {!isCollapsed && "Sign Out"}
         </Button>
       </div>
@@ -166,7 +166,7 @@ export function Sidebar() {
   return (
     <>
       <div
-        className={twMerge(
+        className={cn(
           "flex h-full flex-col fixed left-0 top-0 bottom-0 bg-gray-900 text-white transition-all duration-300 z-30 overflow-hidden",
           isCollapsed ? "w-16" : "w-64",
         )}

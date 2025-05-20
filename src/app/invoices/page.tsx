@@ -14,9 +14,10 @@ export default function InvoicesPage() {
           (status === "All" || i.status === status) &&
           (i.company.toLowerCase().includes(search.toLowerCase()) ||
             i.id.toLowerCase().includes(search.toLowerCase())),
-    ),
+      ),
     [search, status],
   );
+
   return (
     <div className="space-y-8 pb-8">
       <div className="px-4 sm:px-6 bg-gray-150 border-b border-gray-200 py-4">

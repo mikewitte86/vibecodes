@@ -19,7 +19,7 @@ export const renewalColumns: ColumnDef<Renewal>[] = [
     size: 100,
     cell: ({ row }) => {
       const status = row.getValue("status") as string;
-      return <StatusBadge value={status} colorMap={renewalStatusColor} />;
+      return <StatusBadge value={status} color={(renewalStatusColor as Record<string, string>)[status] || "bg-gray-100 text-gray-700"} />;
     },
   },
   {

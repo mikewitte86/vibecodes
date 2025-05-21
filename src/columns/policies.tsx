@@ -36,7 +36,7 @@ export const policyColumns: ColumnDef<Policy>[] = [
     size: 100,
     cell: ({ row }) => {
       const status = row.getValue("status") as string;
-      return <StatusBadge value={status} colorMap={policyStatusColor} />;
+      return <StatusBadge value={status} color={(policyStatusColor as Record<string, string>)[status] || "bg-gray-100 text-gray-700"} />;
     },
   },
   {

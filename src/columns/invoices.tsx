@@ -26,7 +26,7 @@ export const invoiceColumns: ColumnDef<Invoice>[] = [
     size: 90,
     cell: ({ row }) => {
       const status = row.getValue("status") as string;
-      return <StatusBadge value={status} colorMap={invoiceStatusColor} />;
+      return <StatusBadge value={status} color={(invoiceStatusColor as Record<string, string>)[status] || "bg-gray-100 text-gray-700"} />;
     },
   },
   {

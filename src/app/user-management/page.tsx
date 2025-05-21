@@ -3,12 +3,12 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
-import { userColumns, User } from "@/columns/users";
+import { userColumns } from "@/columns/users";
 import { AddUserDialog } from "@/components/modals/AddUserDialog";
 import { EditUserDialog } from "@/components/modals/EditUserDialog";
 import { ConfirmDialog } from "@/components/modals/ConfirmDialog";
 import { AGENCY_TYPES, USER_ROLES_TYPES } from "@/enums";
-import { MoreVertical } from "lucide-react";
+import { MoreVertical, RefreshCcw } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,6 +16,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Row } from "@tanstack/react-table";
+import { useQuery } from "@tanstack/react-query";
+import { fetchAuthSession } from "aws-amplify/auth";
+import { User } from "@/types/api";
+import { cn } from "@/lib/utils";
 
 const userRoles = [
   {
@@ -31,6 +35,7 @@ const userRoles = [
     value: USER_ROLES_TYPES.USER,
   },
 ];
+
 const agencies = [
   {
     name: "Equal Parts",
@@ -46,43 +51,43 @@ const agencies = [
   },
 ];
 
-const initialUsers: User[] = [
-  {
-    name: "Jane Smith",
-    email: "jane.smith@example.com",
-    role: "Super Admin",
-    agency: "Lumen",
-    lastActive: "2023-09-14 10:30 AM",
-  },
-  {
-    name: "John Doe",
-    email: "john.doe@example.com",
-    role: "User",
-    agency: "Lumen",
-    lastActive: "2023-09-14 09:15 AM",
-  },
-  {
-    name: "Sarah Johnson",
-    email: "sarah.j@example.com",
-    role: "Agency Admin",
-    agency: "Assurely",
-    lastActive: "2023-09-13 05:45 PM",
-  },
-  {
-    name: "Mike Wilson",
-    email: "mike.w@example.com",
-    role: "User",
-    agency: "Equal Parts",
-    lastActive: "2023-09-10 11:20 AM",
-  },
-  {
-    name: "Emily Brown",
-    email: "emily.b@example.com",
-    role: "User",
-    agency: "Equal Parts",
-    lastActive: "Never",
-  },
-];
+interface UsersResponse {
+  users: User[];
+  count: number;
+  pagination_token?: string;
+}
+
+function useUsersQuery(paginationToken?: string) {
+  return useQuery<UsersResponse, Error>({
+    queryKey: ["users", paginationToken],
+    queryFn: async () => {
+      const session = await fetchAuthSession();
+      const token = session.tokens?.idToken?.toString();
+
+      if (!token) {
+        throw new Error("No auth token found");
+      }
+
+      const url = new URL("/api/users", window.location.origin);
+      url.searchParams.set("limit", "15");
+      if (paginationToken) {
+        url.searchParams.set("pagination_token", paginationToken);
+      }
+
+      const response = await fetch(url.toString(), {
+        headers: {
+          Authorization: token,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch users");
+      }
+
+      return response.json();
+    },
+  });
+}
 
 export default function UserManagementPage() {
   const [search, setSearch] = useState("");
@@ -91,12 +96,18 @@ export default function UserManagementPage() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [users, setUsers] = useState<User[]>(initialUsers);
+  const [paginationToken, setPaginationToken] = useState<string | undefined>();
+
+  const { data, isLoading, refetch, isFetching } = useUsersQuery(paginationToken);
+
+  const users = data?.users || [];
+  const hasMorePages = !!data?.pagination_token;
 
   const filteredUsers = users.filter((u) => {
     const matchesRole =
       roleFilter === "all" ||
-      userRoles.find((role) => role.value === roleFilter)?.name === u.role;
+      userRoles.find((role) => role.value === roleFilter)?.value ===
+        u.user_role;
     const matchesSearch =
       u.name.toLowerCase().includes(search.toLowerCase()) ||
       u.email.toLowerCase().includes(search.toLowerCase());
@@ -110,14 +121,13 @@ export default function UserManagementPage() {
     role: string;
     agency: string;
   }) {
-    const user: User = {
+    const user: Partial<User> = {
       name: form.firstName + " " + form.lastName,
       email: form.email,
-      role: form.role,
-      agency: form.agency,
-      lastActive: "Never",
+      user_role: form.role,
+      agency_id: form.agency,
     };
-    setUsers((prev) => [user, ...prev]);
+    console.log(user);
   }
 
   function handleEditUser(form: {
@@ -129,26 +139,19 @@ export default function UserManagementPage() {
   }) {
     if (!selectedUser) return;
 
-    const updatedUser: User = {
+    const updatedUser: Partial<User> = {
       name: form.firstName + " " + form.lastName,
       email: form.email,
-      role: form.role,
-      agency: form.agency,
-      lastActive: selectedUser.lastActive,
+      user_role: form.role,
+      agency_id: form.agency,
     };
 
-    setUsers((prev) =>
-      prev.map((user) =>
-        user.email === selectedUser.email ? updatedUser : user,
-      ),
-    );
+    console.log(updatedUser);
   }
 
   function handleDeleteUser() {
     if (!selectedUser) return;
-    setUsers((prev) =>
-      prev.filter((user) => user.email !== selectedUser.email),
-    );
+    console.log(selectedUser);
   }
 
   const columns = [
@@ -201,65 +204,69 @@ export default function UserManagementPage() {
         <div>
           <h1 className="text-2xl font-bold">User Management</h1>
           <p className="text-gray-500 text-sm mt-1">
-            Manage system users and their access
+            Manage users and their permissions
           </p>
         </div>
-        <Button
-          className="text-white font-semibold px-4 py-2 rounded-md cursor-pointer"
-          onClick={() => setAddDialogOpen(true)}
-        >
-          + New User
-        </Button>
-        <AddUserDialog
-          open={addDialogOpen}
-          onOpenChange={setAddDialogOpen}
-          onUserAdd={handleAddUser}
-          userRoles={userRoles}
-          agencies={agencies}
-        />
-        {selectedUser && (
-          <>
-            <EditUserDialog
-              open={editDialogOpen}
-              onOpenChange={setEditDialogOpen}
-              onUserEdit={handleEditUser}
-              userRoles={userRoles}
-              agencies={agencies}
-              user={selectedUser}
+        <div className="flex items-center gap-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setPaginationToken(undefined);
+              refetch();
+            }}
+            disabled={isFetching}
+          >
+            <RefreshCcw
+              className={cn("h-4 w-4 mr-2", isFetching && "animate-spin")}
             />
-            <ConfirmDialog
-              open={deleteDialogOpen}
-              onOpenChange={setDeleteDialogOpen}
-              onConfirm={handleDeleteUser}
-              title="Delete User"
-              description={`Are you sure you want to delete <strong>${selectedUser.name}</strong>?`}
-              confirmText="Delete"
-            />
-          </>
-        )}
+            Refresh
+          </Button>
+          <Button onClick={() => setAddDialogOpen(true)}>Add User</Button>
+        </div>
       </div>
+
       <div className="px-4 sm:px-6">
         <DataTable
           columns={columns}
           data={filteredUsers}
-          search={{
-            value: search,
-            onChange: setSearch,
-            placeholder: "Search users...",
-          }}
-          filter={{
-            value: roleFilter,
-            onChange: setRoleFilter,
-            options: [
-              { value: "all", label: "All Roles" },
-              ...userRoles.map((role) => ({
-                value: role.value,
-                label: role.name,
-              })),
-            ],
-          }}
+          isLoading={isLoading}
+          search={search}
+          onSearchChange={setSearch}
+          roleFilter={roleFilter}
+          onRoleFilterChange={setRoleFilter}
+          userRoles={userRoles}
+          paginationToken={paginationToken}
+          onPaginationChange={setPaginationToken}
+          hasMorePages={hasMorePages}
+          nextPageToken={data?.pagination_token}
         />
       </div>
+
+      <AddUserDialog
+        open={addDialogOpen}
+        onOpenChange={setAddDialogOpen}
+        onSubmit={handleAddUser}
+        agencies={agencies}
+        userRoles={userRoles}
+      />
+
+      <EditUserDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        onSubmit={handleEditUser}
+        user={selectedUser}
+        agencies={agencies}
+        userRoles={userRoles}
+      />
+
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={handleDeleteUser}
+        title="Delete User"
+        description="Are you sure you want to delete this user? This action cannot be undone."
+      />
     </div>
   );
 }

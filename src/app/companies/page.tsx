@@ -19,11 +19,8 @@ export default function CompaniesPage() {
         <DataTable
           columns={companyColumns}
           data={companies}
-          search={{
-            value: search,
-            onChange: setSearch,
-            placeholder: "Search companies...",
-          }}
+          search={search}
+          onSearchChange={setSearch}
         />
       </div>
     </div>

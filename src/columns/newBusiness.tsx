@@ -26,7 +26,7 @@ export const newBusinessColumns: ColumnDef<Deal>[] = [
     size: 100,
     cell: ({ row }) => {
       const stage = row.getValue("stage") as string;
-      return <StatusBadge value={stage} colorMap={businessStageColor} />;
+      return <StatusBadge value={stage} color={(businessStageColor as Record<string, string>)[stage] || "bg-gray-100 text-gray-700"} />;
     },
   },
   { accessorKey: "value", header: "VALUE", size: 120 },

@@ -30,7 +30,7 @@ export function configureAmplify() {
       },
       API: {
         REST: {
-          api: {
+          equalparts: {
             endpoint: apiUrl || '',
             region,
           },

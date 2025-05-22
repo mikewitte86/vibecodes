@@ -15,9 +15,9 @@ interface ConfirmDialogProps {
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
   title: string;
-  description?: string;
-  confirmText?: string;
-  cancelText?: string;
+  description: string;
+  isSubmitting?: boolean;
+  error?: string | null;
 }
 
 export function ConfirmDialog({
@@ -26,8 +26,8 @@ export function ConfirmDialog({
   onConfirm,
   title,
   description,
-  confirmText = "Yes",
-  cancelText = "Cancel",
+  isSubmitting,
+  error,
 }: ConfirmDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -35,29 +35,27 @@ export function ConfirmDialog({
         <DialogHeader className="bg-gray-150 border-b border-gray-200 p-4">
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
-        {description && (
-          <div 
-            className="pt-0 p-4 text-sm text-gray-500"
-            dangerouslySetInnerHTML={{ __html: description }}
-          />
-        )}
-        <DialogFooter className="flex flex-row gap-2 justify-end p-4">
-          <DialogClose asChild>
-            <Button type="button" variant="outline">
-              {cancelText}
+        <div className="p-4 space-y-4">
+          {error && (
+            <div className="text-red-600 text-sm">{error}</div>
+          )}
+          <p className="text-gray-600">{description}</p>
+          <DialogFooter className="flex flex-row gap-2 justify-end mt-4">
+            <DialogClose asChild>
+              <Button type="button" variant="outline" disabled={isSubmitting}>
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={onConfirm}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Deleting..." : "Delete"}
             </Button>
-          </DialogClose>
-          <Button
-            type="button"
-            variant="destructive"
-            onClick={() => {
-              onConfirm();
-              onOpenChange(false);
-            }}
-          >
-            {confirmText}
-          </Button>
-        </DialogFooter>
+          </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );

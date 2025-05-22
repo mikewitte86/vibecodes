@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
 import { userColumns } from "@/columns/users";
@@ -15,79 +15,22 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Row } from "@tanstack/react-table";
-import { useQuery } from "@tanstack/react-query";
-import { fetchAuthSession } from "aws-amplify/auth";
+import { Row, ColumnDef } from "@tanstack/react-table";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { User } from "@/types/api";
+import { userApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 const userRoles = [
-  {
-    name: "Super Admin",
-    value: USER_ROLES_TYPES.SUPER_ADMIN,
-  },
-  {
-    name: "Agency Admin",
-    value: USER_ROLES_TYPES.AGENCY_ADMIN,
-  },
-  {
-    name: "User",
-    value: USER_ROLES_TYPES.USER,
-  },
+  { name: "Super Admin", value: USER_ROLES_TYPES.SUPER_ADMIN },
+  { name: "Agency Admin", value: USER_ROLES_TYPES.AGENCY_ADMIN },
 ];
 
 const agencies = [
-  {
-    name: "Equal Parts",
-    value: AGENCY_TYPES.EQUAL_PARTS,
-  },
-  {
-    name: "Lumen",
-    value: AGENCY_TYPES.LUMEN,
-  },
-  {
-    name: "Assurely",
-    value: AGENCY_TYPES.ASSURELY,
-  },
+  { name: "Equal Parts", value: AGENCY_TYPES.EQUAL_PARTS },
+  { name: "Lumen", value: AGENCY_TYPES.LUMEN },
+  { name: "Assurely", value: AGENCY_TYPES.ASSURELY },
 ];
-
-interface UsersResponse {
-  users: User[];
-  count: number;
-  pagination_token?: string;
-}
-
-function useUsersQuery(paginationToken?: string) {
-  return useQuery<UsersResponse, Error>({
-    queryKey: ["users", paginationToken],
-    queryFn: async () => {
-      const session = await fetchAuthSession();
-      const token = session.tokens?.idToken?.toString();
-
-      if (!token) {
-        throw new Error("No auth token found");
-      }
-
-      const url = new URL("/api/users", window.location.origin);
-      url.searchParams.set("limit", "15");
-      if (paginationToken) {
-        url.searchParams.set("pagination_token", paginationToken);
-      }
-
-      const response = await fetch(url.toString(), {
-        headers: {
-          Authorization: token,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch users");
-      }
-
-      return response.json();
-    },
-  });
-}
 
 export default function UserManagementPage() {
   const [search, setSearch] = useState("");
@@ -97,64 +40,82 @@ export default function UserManagementPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [paginationToken, setPaginationToken] = useState<string | undefined>();
+  const queryClient = useQueryClient();
 
-  const { data, isLoading, refetch, isFetching } = useUsersQuery(paginationToken);
-
-  const users = data?.users || [];
-  const hasMorePages = !!data?.pagination_token;
-
-  const filteredUsers = users.filter((u) => {
-    const matchesRole =
-      roleFilter === "all" ||
-      userRoles.find((role) => role.value === roleFilter)?.value ===
-        u.user_role;
-    const matchesSearch =
-      u.name.toLowerCase().includes(search.toLowerCase()) ||
-      u.email.toLowerCase().includes(search.toLowerCase());
-    return matchesRole && matchesSearch;
+  const { data, isLoading, refetch, isFetching } = useQuery({
+    queryKey: ["users", paginationToken],
+    queryFn: () => userApi.getUsers(paginationToken),
   });
 
-  function handleAddUser(form: {
-    firstName: string;
-    lastName: string;
-    email: string;
-    role: string;
-    agency: string;
-  }) {
-    const user: Partial<User> = {
-      name: form.firstName + " " + form.lastName,
+  const hasMorePages = !!data?.pagination_token;
+
+  const filteredUsers = useMemo(() => {
+    const users = data?.users || [];
+    return users.filter((u) => {
+      const matchesRole = roleFilter === "all" || u.user_role === roleFilter;
+      const matchesSearch = search === "" || 
+        u.name.toLowerCase().includes(search.toLowerCase()) ||
+        u.email.toLowerCase().includes(search.toLowerCase());
+      return matchesRole && matchesSearch;
+    });
+  }, [data?.users, roleFilter, search]);
+
+  const addUserMutation = useMutation({
+    mutationFn: (form: {
+      firstName: string;
+      lastName: string;
+      email: string;
+      role: string;
+      agency: string;
+    }) => userApi.createUser({
+      name: `${form.firstName} ${form.lastName}`.trim(),
       email: form.email,
       user_role: form.role,
       agency_id: form.agency,
-    };
-    console.log(user);
-  }
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      setAddDialogOpen(false);
+    },
+  });
 
-  function handleEditUser(form: {
-    firstName: string;
-    lastName: string;
-    email: string;
-    role: string;
-    agency: string;
-  }) {
-    if (!selectedUser) return;
+  const editUserMutation = useMutation({
+    mutationFn: (form: {
+      firstName: string;
+      lastName: string;
+      email: string;
+      role: string;
+      agency: string;
+    }) => {
+      if (!selectedUser?.username) {
+        throw new Error("No user selected");
+      }
+      return userApi.updateUser(selectedUser.username, {
+        name: `${form.firstName} ${form.lastName}`.trim(),
+        user_role: form.role.toUpperCase(),
+        agency_id: form.agency.toLowerCase(),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      setEditDialogOpen(false);
+    },
+  });
 
-    const updatedUser: Partial<User> = {
-      name: form.firstName + " " + form.lastName,
-      email: form.email,
-      user_role: form.role,
-      agency_id: form.agency,
-    };
+  const deleteUserMutation = useMutation({
+    mutationFn: () => {
+      if (!selectedUser?.username) {
+        throw new Error("No user selected");
+      }
+      return userApi.deleteUser(selectedUser.username);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      setDeleteDialogOpen(false);
+    },
+  });
 
-    console.log(updatedUser);
-  }
-
-  function handleDeleteUser() {
-    if (!selectedUser) return;
-    console.log(selectedUser);
-  }
-
-  const columns = [
+  const columns = useMemo<ColumnDef<User>[]>(() => [
     ...userColumns,
     {
       id: "actions",
@@ -196,7 +157,7 @@ export default function UserManagementPage() {
         </div>
       ),
     },
-  ];
+  ], []);
 
   return (
     <div className="space-y-8 pb-8">
@@ -246,26 +207,32 @@ export default function UserManagementPage() {
       <AddUserDialog
         open={addDialogOpen}
         onOpenChange={setAddDialogOpen}
-        onSubmit={handleAddUser}
+        onSubmit={addUserMutation.mutate}
         agencies={agencies}
         userRoles={userRoles}
+        isSubmitting={addUserMutation.isPending}
+        error={addUserMutation.error?.message || null}
       />
 
       <EditUserDialog
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
-        onSubmit={handleEditUser}
+        onSubmit={editUserMutation.mutate}
         user={selectedUser}
         agencies={agencies}
         userRoles={userRoles}
+        isSubmitting={editUserMutation.isPending}
+        error={editUserMutation.error?.message || null}
       />
 
       <ConfirmDialog
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
-        onConfirm={handleDeleteUser}
+        onConfirm={() => deleteUserMutation.mutate()}
         title="Delete User"
         description="Are you sure you want to delete this user? This action cannot be undone."
+        isSubmitting={deleteUserMutation.isPending}
+        error={deleteUserMutation.error?.message || null}
       />
     </div>
   );

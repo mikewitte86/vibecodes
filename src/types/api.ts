@@ -11,9 +11,7 @@ export interface User {
 }
 
 export interface UsersResponse {
-  statusCode: number;
-  body: {
-    users: User[];
-    count: number;
-  };
+  users: User[];
+  count: number;
+  pagination_token?: string;
 } 

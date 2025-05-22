@@ -41,6 +41,8 @@ interface AddUserDialogProps {
   }) => void;
   agencies: { name: string; value: string }[];
   userRoles: { name: string; value: string }[];
+  isSubmitting?: boolean;
+  error?: string | null;
 }
 
 export function AddUserDialog({
@@ -49,11 +51,13 @@ export function AddUserDialog({
   onSubmit,
   agencies,
   userRoles,
+  isSubmitting,
+  error,
 }: AddUserDialogProps) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState("");
+  const [role, setRole] = useState(USER_ROLES_TYPES.SUPER_ADMIN);
   const [agency, setAgency] = useState("");
 
   function handleSubmit(e: React.FormEvent) {
@@ -63,9 +67,8 @@ export function AddUserDialog({
       lastName,
       email,
       role,
-      agency,
+      agency: role === USER_ROLES_TYPES.AGENCY_ADMIN ? agency : AGENCY_TYPES.EQUAL_PARTS,
     });
-    onOpenChange(false);
   }
 
   return (
@@ -76,6 +79,9 @@ export function AddUserDialog({
           <DialogTitle>Add User</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 mt-2 px-4 pb-4">
+          {error && (
+            <div className="text-red-600 text-sm">{error}</div>
+          )}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="firstName">First Name</Label>
@@ -84,6 +90,7 @@ export function AddUserDialog({
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 required
+                disabled={isSubmitting}
               />
             </div>
             <div className="space-y-2">
@@ -93,6 +100,7 @@ export function AddUserDialog({
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
                 required
+                disabled={isSubmitting}
               />
             </div>
           </div>
@@ -104,11 +112,12 @@ export function AddUserDialog({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              disabled={isSubmitting}
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="role">Role</Label>
-            <Select value={role} onValueChange={setRole}>
+            <Select value={role} onValueChange={(value) => setRole(value as USER_ROLES_TYPES)} disabled={isSubmitting}>
               <SelectTrigger>
                 <SelectValue placeholder="Select role" />
               </SelectTrigger>
@@ -121,28 +130,32 @@ export function AddUserDialog({
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="agency">Agency</Label>
-            <Select value={agency} onValueChange={setAgency}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select agency" />
-              </SelectTrigger>
-              <SelectContent>
-                {agencies.map((agency) => (
-                  <SelectItem key={agency.value} value={agency.value}>
-                    {agency.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {role === USER_ROLES_TYPES.AGENCY_ADMIN && (
+            <div className="space-y-2">
+              <Label htmlFor="agency">Agency</Label>
+              <Select value={agency} onValueChange={setAgency} disabled={isSubmitting}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select agency" />
+                </SelectTrigger>
+                <SelectContent>
+                  {agencies.map((agency) => (
+                    <SelectItem key={agency.value} value={agency.value}>
+                      {agency.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <DialogFooter className="flex flex-row gap-2 justify-end mt-4">
             <DialogClose asChild>
-              <Button type="button" variant="outline">
+              <Button type="button" variant="outline" disabled={isSubmitting}>
                 Cancel
               </Button>
             </DialogClose>
-            <Button type="submit">Add User</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Adding..." : "Add User"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

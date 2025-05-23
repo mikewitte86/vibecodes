@@ -1,21 +1,12 @@
-import { FileText } from "lucide-react";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { ColumnDef } from "@tanstack/react-table";
 import { Policy } from "@/lib/api";
 
 const policyStatusColor: Record<string, string> = {
   active: "bg-green-100 text-green-700",
-  inactive: "bg-gray-100 text-gray-700",
   pending: "bg-yellow-100 text-yellow-800",
-  expired: "bg-red-100 text-red-700",
-  cancelled: "bg-gray-100 text-gray-700",
-};
-
-const agencyLabels: Record<string, string> = {
-  "test-agency": "Test Agency",
-  equalparts: "Equal Parts",
-  lumen: "Lumen",
-  assurely: "Assurely",
+  cancelled: "bg-red-100 text-red-700",
+  expired: "bg-gray-100 text-gray-700",
 };
 
 export const policyColumns: ColumnDef<Policy>[] = [
@@ -37,7 +28,7 @@ export const policyColumns: ColumnDef<Policy>[] = [
     accessorKey: "line_of_business",
     header: "Line of Business",
     cell: ({ row }) => {
-      const lob = row.getValue("line_of_business") as any[];
+      const lob = row.getValue("line_of_business") as { lineOfBusinessName: string }[];
       return (
         <span className="truncate max-w-[100px] block">
           {lob?.[0]?.lineOfBusinessName || "N/A"}

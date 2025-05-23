@@ -42,7 +42,7 @@ interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   isLoading?: boolean;
-  search: string | {
+  search?: string | {
     value: string;
     onChange: (value: string) => void;
     placeholder?: string;
@@ -80,19 +80,14 @@ export function DataTable<TData, TValue>({
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
-  const searchValue = typeof search === 'string' ? search : search.value;
-  const handleSearchChange = typeof search === 'string' 
-    ? onSearchChange 
-    : search.onChange;
-  const searchPlaceholder = typeof search === 'string' 
-    ? "Search..." 
-    : search.placeholder || "Search...";
+  const searchValue = search ? (typeof search === 'string' ? search : search.value) : '';
+  const handleSearchChange = search ? (typeof search === 'string' ? onSearchChange : search.onChange) : undefined;
+  const searchPlaceholder = search ? (typeof search === 'string' ? "Search..." : search.placeholder || "Search...") : "Search...";
 
   const table = useReactTable({
     data,
     columns,
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     onSortingChange: setSorting,
@@ -106,45 +101,47 @@ export function DataTable<TData, TValue>({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-4">
-        <Input
-          placeholder={searchPlaceholder}
-          value={searchValue}
-          onChange={(e) => handleSearchChange?.(e.target.value)}
-          className="max-w-sm"
-        />
-        {filter && (
-          <Select value={filter.value} onValueChange={filter.onChange}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Select filter" />
-            </SelectTrigger>
-            <SelectContent>
-              {filter.options.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-        {roleFilter && onRoleFilterChange && userRoles && (
-          <Select value={roleFilter} onValueChange={onRoleFilterChange}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Select role" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Roles</SelectItem>
-              {userRoles.map((role) => (
-                <SelectItem key={role.value} value={role.value}>
-                  {role.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-      </div>
+      {search && (
+        <div className="flex items-center gap-4">
+          <Input
+            placeholder={searchPlaceholder}
+            value={searchValue}
+            onChange={(e) => handleSearchChange?.(e.target.value)}
+            className="max-w-sm"
+          />
+          {filter && (
+            <Select value={filter.value} onValueChange={filter.onChange}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Select filter" />
+              </SelectTrigger>
+              <SelectContent>
+                {filter.options.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          {roleFilter && onRoleFilterChange && userRoles && (
+            <Select value={roleFilter} onValueChange={onRoleFilterChange}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Select role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Roles</SelectItem>
+                {userRoles.map((role) => (
+                  <SelectItem key={role.value} value={role.value}>
+                    {role.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+      )}
 
-      <div className="rounded-xl border border-gray-200 bg-white shadow">
+      <div className="rounded-xl border border-gray-200 bg-white shadow overflow-x-auto">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -153,6 +150,7 @@ export function DataTable<TData, TValue>({
                   <TableHead 
                     key={header.id}
                     style={{ width: header.getSize() }}
+                    className="whitespace-nowrap"
                   >
                     {header.isPlaceholder
                       ? null

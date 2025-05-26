@@ -2,6 +2,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { User } from "@/types/api";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { USER_ROLES_TYPES, USER_STATUS } from "@/enums";
+import { TruncatedCell } from "@/components/ui/truncated-cell";
 
 const roleLabels: Record<string, string> = {
   [USER_ROLES_TYPES.SUPER_ADMIN]: "Super Admin",
@@ -36,42 +37,74 @@ const agencyLabels: Record<string, string> = {
 export const userColumns: ColumnDef<User>[] = [
   {
     accessorKey: "name",
-    header: "Name",
+    header: () => <TruncatedCell text="Name" maxWidth="max-w-[150px]" />,
+    cell: ({ row }) => (
+      <TruncatedCell
+        text={row.getValue("name") as string}
+        maxWidth="max-w-[150px]"
+        className="font-medium"
+      />
+    ),
   },
   {
     accessorKey: "email",
-    header: "Email",
+    header: () => <TruncatedCell text="Email" maxWidth="max-w-[200px]" />,
+    cell: ({ row }) => (
+      <TruncatedCell
+        text={row.getValue("email") as string}
+        maxWidth="max-w-[200px]"
+      />
+    ),
   },
   {
     accessorKey: "user_role",
-    header: "Role",
+    header: () => <TruncatedCell text="Role" maxWidth="max-w-[100px]" />,
     cell: ({ row }) => {
       const role = row.getValue("user_role") as string;
-      return <StatusBadge value={roleLabels[role] || role} color={roleColors[role] || "bg-gray-100 text-gray-700"} />;
+      return (
+        <StatusBadge
+          value={roleLabels[role] || role}
+          color={roleColors[role] || "bg-gray-100 text-gray-700"}
+        />
+      );
     },
   },
   {
     accessorKey: "agency_id",
-    header: "Agency",
+    header: () => <TruncatedCell text="Agency" maxWidth="max-w-[100px]" />,
     cell: ({ row }) => {
       const agency = row.getValue("agency_id") as string;
-      return agencyLabels[agency] || agency;
+      return (
+        <TruncatedCell
+          text={agencyLabels[agency.toLowerCase()] || agency}
+          maxWidth="max-w-[100px]"
+        />
+      );
     },
   },
   {
     accessorKey: "status",
-    header: "Status",
+    header: () => <TruncatedCell text="Status" maxWidth="max-w-[80px]" />,
     cell: ({ row }) => {
       const status = row.getValue("status") as string;
-      return <StatusBadge value={statusLabels[status] || status} color={statusColors[status] || "bg-gray-100 text-gray-700"} />;
+      return (
+        <StatusBadge
+          value={statusLabels[status] || status}
+          color={statusColors[status] || "bg-gray-100 text-gray-700"}
+        />
+      );
     },
   },
   {
     accessorKey: "last_modified",
-    header: "Last Modified",
+    header: () => (
+      <TruncatedCell text="Last Modified" maxWidth="max-w-[120px]" />
+    ),
     cell: ({ row }) => {
-      const date = new Date(row.getValue("last_modified"));
-      return date.toLocaleDateString();
+      const date = new Date(row.getValue("last_modified") as string);
+      return (
+        <span className="whitespace-nowrap">{date.toLocaleDateString()}</span>
+      );
     },
   },
 ];

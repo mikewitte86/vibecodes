@@ -21,6 +21,7 @@ import {
   Upload,
   ClipboardList,
   UserPlus,
+  Building2,
 } from "lucide-react";
 import Image from "next/image";
 
@@ -29,7 +30,7 @@ const navigationSections = [
     label: "Agency Operations",
     items: [
       { name: "Dashboard", href: "/", icon: LayoutDashboardIcon },
-      { name: "Companies", href: "/companies", icon: UsersIcon },
+      { name: "Companies", href: "/companies", icon: Building2 },
       { name: "Clients", href: "/clients", icon: UsersIcon },
       { name: "Policies", href: "/policies", icon: FileText },
       { name: "Next 90 Renewals", href: "/renewals", icon: RefreshCcw },

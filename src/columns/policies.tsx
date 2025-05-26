@@ -1,6 +1,7 @@
 import { StatusBadge } from "@/components/ui/status-badge";
 import { ColumnDef } from "@tanstack/react-table";
 import { Policy } from "@/lib/api";
+import { TruncatedCell } from "@/components/ui/truncated-cell";
 
 const policyStatusColor: Record<string, string> = {
   active: "bg-green-100 text-green-700",
@@ -12,33 +13,41 @@ const policyStatusColor: Record<string, string> = {
 export const policyColumns: ColumnDef<Policy>[] = [
   {
     accessorKey: "number",
-    header: "Policy Number",
+    header: () => <TruncatedCell text="Policy Number" maxWidth="max-w-[100px]" />,
     cell: ({ row }) => (
-      <span className="truncate max-w-[100px] block font-medium">{row.getValue("number") as string}</span>
+      <TruncatedCell 
+        text={row.getValue("number") as string} 
+        maxWidth="max-w-[100px]"
+        className="font-medium"
+      />
     ),
   },
   {
     accessorKey: "carrier",
-    header: "Carrier",
+    header: () => <TruncatedCell text="Carrier" maxWidth="max-w-[120px]" />,
     cell: ({ row }) => (
-      <span className="truncate max-w-[120px] block">{row.getValue("carrier") as string}</span>
+      <TruncatedCell 
+        text={row.getValue("carrier") as string} 
+        maxWidth="max-w-[120px]"
+      />
     ),
   },
   {
     accessorKey: "line_of_business",
-    header: "Line of Business",
+    header: () => <TruncatedCell text="Line of Business" maxWidth="max-w-[100px]" />,
     cell: ({ row }) => {
       const lob = row.getValue("line_of_business") as { lineOfBusinessName: string }[];
       return (
-        <span className="truncate max-w-[100px] block">
-          {lob?.[0]?.lineOfBusinessName || "N/A"}
-        </span>
+        <TruncatedCell 
+          text={lob?.[0]?.lineOfBusinessName || "N/A"} 
+          maxWidth="max-w-[100px]"
+        />
       );
     },
   },
   {
     accessorKey: "status",
-    header: "Status",
+    header: () => <TruncatedCell text="Status" maxWidth="max-w-[80px]" />,
     cell: ({ row }) => {
       const status = (row.getValue("status") as string).toLowerCase();
       return <StatusBadge value={status} color={policyStatusColor[status] || "bg-gray-100 text-gray-700"} />;
@@ -46,22 +55,27 @@ export const policyColumns: ColumnDef<Policy>[] = [
   },
   {
     accessorKey: "premium",
-    header: "Premium",
+    header: () => <TruncatedCell text="Premium" maxWidth="max-w-[100px]" />,
     cell: ({ row }) => (
       <span className="font-mono whitespace-nowrap">${(row.getValue("premium") as number).toLocaleString()}</span>
     ),
   },
   {
     accessorKey: "insured",
-    header: "Insured",
+    header: () => <TruncatedCell text="Insured" maxWidth="max-w-[120px]" />,
     cell: ({ row }) => {
       const insured = row.getValue("insured") as { name: string };
-      return <span className="truncate max-w-[120px] block">{insured?.name || "N/A"}</span>;
+      return (
+        <TruncatedCell 
+          text={insured?.name || "N/A"} 
+          maxWidth="max-w-[120px]"
+        />
+      );
     },
   },
   {
     accessorKey: "effective_date",
-    header: "Effective Date",
+    header: () => <TruncatedCell text="Effective Date" maxWidth="max-w-[100px]" />,
     cell: ({ row }) => {
       const date = new Date(row.getValue("effective_date") as string);
       return <span className="whitespace-nowrap">{date.toLocaleDateString()}</span>;
@@ -69,7 +83,7 @@ export const policyColumns: ColumnDef<Policy>[] = [
   },
   {
     accessorKey: "expiration_date",
-    header: "Expiration Date",
+    header: () => <TruncatedCell text="Expiration Date" maxWidth="max-w-[100px]" />,
     cell: ({ row }) => {
       const date = new Date(row.getValue("expiration_date") as string);
       return <span className="whitespace-nowrap">{date.toLocaleDateString()}</span>;

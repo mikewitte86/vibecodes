@@ -45,6 +45,34 @@ export interface PoliciesResponse {
   };
 }
 
+export interface Customer {
+  id: string;
+  tenant_id: string;
+  owner_id: string;
+  created_at: string;
+  updated_at: string | null;
+  name: string;
+  phone: string | null;
+  status: string;
+  nowcerts_id: string;
+  hubspot_id: string;
+  broker_buddha_id: string | null;
+  is_prospect: boolean;
+  GSI1SK: string;
+  GSI2SK: string;
+  GSI3SK: string;
+  GSI4SK: string;
+}
+
+export interface CustomersResponse {
+  statusCode: number;
+  body: {
+    customers: Customer[];
+    count: number;
+    last_evaluated_key: string | null;
+  };
+}
+
 const api = axios.create({
   baseURL: "/api",
 });
@@ -107,6 +135,17 @@ export const policyApi = {
       params.set('by_customer', customerId);
     }
     const response = await api.get<PoliciesResponse>(`/policies?${params.toString()}`);
+    return response.data;
+  },
+};
+
+export const customerApi = {
+  getCustomers: async (agencyId?: string): Promise<CustomersResponse> => {
+    const params = new URLSearchParams();
+    if (agencyId) {
+      params.set('agency_id', agencyId);
+    }
+    const response = await api.get<CustomersResponse>(`/customers?${params.toString()}`);
     return response.data;
   },
 };

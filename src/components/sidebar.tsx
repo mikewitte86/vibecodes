@@ -26,10 +26,11 @@ import Image from "next/image";
 
 const navigationSections = [
   {
-    label: "DATA OUTPUTS",
+    label: "Agency Operations",
     items: [
       { name: "Dashboard", href: "/", icon: LayoutDashboardIcon },
       { name: "Companies", href: "/companies", icon: UsersIcon },
+      { name: "Clients", href: "/clients", icon: UsersIcon },
       { name: "Policies", href: "/policies", icon: FileText },
       { name: "Next 90 Renewals", href: "/renewals", icon: RefreshCcw },
       { name: "New Business", href: "/new-business", icon: TrendingUp },
@@ -37,23 +38,16 @@ const navigationSections = [
     ],
   },
   {
-    label: "ULTRON OUTPUTS",
-    items: [{ name: "Customers", href: "/customers", icon: UsersIcon }],
-  },
-  {
-    label: "FEED ULTRON",
+    label: "Agency Workflows",
     items: [
+      { name: "Task Board", href: "/task-board", icon: ClipboardList },
       { name: "New Policy", href: "/new-policy", icon: FileText },
       { name: "New Contact", href: "/new-contact", icon: UserPlus },
       { name: "Upload Document", href: "/upload-document", icon: Upload },
     ],
   },
   {
-    label: "TASK MANAGEMENT",
-    items: [{ name: "Task Board", href: "/task-board", icon: ClipboardList }],
-  },
-  {
-    label: "ADMINISTRATIVE",
+    label: "Administration",
     items: [
       { name: "User Management", href: "/user-management", icon: UsersIcon },
       { name: "Roles & Permissions", href: "/roles-permissions", icon: Shield },
@@ -101,13 +95,13 @@ export function Sidebar() {
       <nav
         className={cn(
           "flex-1 space-y-5 px-3 py-4 overflow-y-auto",
-          isCollapsed && "space-y-5",
+          isCollapsed && "space-y-7",
         )}
       >
         {navigationSections.map((section) => (
           <div key={section.label}>
             {!isCollapsed && (
-              <div className="text-xs font-semibold text-gray-400 mb-2 px-2 tracking-widest">
+              <div className="text-xs font-semibold uppercase text-gray-400 mb-2 px-2 tracking-widest">
                 {section.label}
               </div>
             )}
@@ -118,7 +112,7 @@ export function Sidebar() {
                   key={item.name}
                   href={item.href}
                   className={cn(
-                    "flex items-center mb-1 justify-start gap-3 rounded-lg px-3 h-9 py-2 text-sm font-medium transition-colors",
+                    "flex items-center flex-nowrap mb-1 justify-start gap-3 rounded-lg px-3 h-9 py-2 text-sm font-medium transition-colors",
                     isActive
                       ? "bg-gray-800 text-white"
                       : "text-gray-400 hover:bg-gray-800 hover:text-white",

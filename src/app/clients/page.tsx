@@ -56,9 +56,9 @@ export default function CustomersPage() {
     <div className="space-y-8 pb-8">
       <div className="px-4 sm:px-6 bg-gray-150 border-b border-gray-200 py-4 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Customers</h1>
+          <h1 className="text-2xl font-bold">Clients</h1>
           <p className="text-gray-500 text-sm mt-1">
-            View and manage all customers from Ultron.
+            View and manage all clients.
           </p>
         </div>
         <Button

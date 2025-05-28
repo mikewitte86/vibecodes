@@ -33,8 +33,6 @@ const agencies = [
 ];
 
 export default function UserManagementPage() {
-  const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState("all");
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -49,17 +47,6 @@ export default function UserManagementPage() {
 
   const hasMorePages = !!data?.pagination_token;
 
-  const filteredUsers = useMemo(() => {
-    const users = data?.users || [];
-    return users.filter((u) => {
-      const matchesRole = roleFilter === "all" || u.user_role === roleFilter;
-      const matchesSearch = search === "" || 
-        u.name.toLowerCase().includes(search.toLowerCase()) ||
-        u.email.toLowerCase().includes(search.toLowerCase());
-      return matchesRole && matchesSearch;
-    });
-  }, [data?.users, roleFilter, search]);
-
   const addUserMutation = useMutation({
     mutationFn: (form: {
       firstName: string;
@@ -67,12 +54,13 @@ export default function UserManagementPage() {
       email: string;
       role: string;
       agency: string;
-    }) => userApi.createUser({
-      name: `${form.firstName} ${form.lastName}`.trim(),
-      email: form.email,
-      user_role: form.role,
-      agency_id: form.agency,
-    }),
+    }) =>
+      userApi.createUser({
+        name: `${form.firstName} ${form.lastName}`.trim(),
+        email: form.email,
+        user_role: form.role,
+        agency_id: form.agency,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["users"] });
       setAddDialogOpen(false);
@@ -115,49 +103,52 @@ export default function UserManagementPage() {
     },
   });
 
-  const columns = useMemo<ColumnDef<User>[]>(() => [
-    ...userColumns,
-    {
-      id: "actions",
-      header: "",
-      size: 50,
-      cell: ({ row }: { row: Row<User> }) => (
-        <div className="flex justify-end">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="cursor-pointer h-8 w-8"
-              >
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                className="cursor-pointer"
-                onClick={() => {
-                  setSelectedUser(row.original);
-                  setEditDialogOpen(true);
-                }}
-              >
-                Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => {
-                  setSelectedUser(row.original);
-                  setDeleteDialogOpen(true);
-                }}
-                className="text-red-600 hover:!text-red-600 cursor-pointer"
-              >
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      ),
-    },
-  ], []);
+  const columns = useMemo<ColumnDef<User>[]>(
+    () => [
+      ...userColumns,
+      {
+        id: "actions",
+        header: "",
+        size: 50,
+        cell: ({ row }: { row: Row<User> }) => (
+          <div className="flex justify-end">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="cursor-pointer h-8 w-8"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  className="cursor-pointer"
+                  onClick={() => {
+                    setSelectedUser(row.original);
+                    setEditDialogOpen(true);
+                  }}
+                >
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    setSelectedUser(row.original);
+                    setDeleteDialogOpen(true);
+                  }}
+                  className="text-red-600 hover:!text-red-600 cursor-pointer"
+                >
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        ),
+      },
+    ],
+    [],
+  );
 
   return (
     <div className="space-y-8 pb-8">
@@ -190,13 +181,8 @@ export default function UserManagementPage() {
       <div className="px-4 sm:px-6">
         <DataTable
           columns={columns}
-          data={filteredUsers}
+          data={data?.users || []}
           isLoading={isLoading}
-          search={search}
-          onSearchChange={setSearch}
-          roleFilter={roleFilter}
-          onRoleFilterChange={setRoleFilter}
-          userRoles={userRoles}
           paginationToken={paginationToken}
           onPaginationChange={setPaginationToken}
           hasMorePages={hasMorePages}

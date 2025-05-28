@@ -37,28 +37,22 @@ const agencyLabels: Record<string, string> = {
 export const userColumns: ColumnDef<User>[] = [
   {
     accessorKey: "name",
-    header: () => <TruncatedCell text="Name" maxWidth="max-w-[150px]" />,
+    header: () => <TruncatedCell text="Name" />,
     cell: ({ row }) => (
       <TruncatedCell
         text={row.getValue("name") as string}
-        maxWidth="max-w-[150px]"
         className="font-medium"
       />
     ),
   },
   {
     accessorKey: "email",
-    header: () => <TruncatedCell text="Email" maxWidth="max-w-[200px]" />,
-    cell: ({ row }) => (
-      <TruncatedCell
-        text={row.getValue("email") as string}
-        maxWidth="max-w-[200px]"
-      />
-    ),
+    header: () => <TruncatedCell text="Email" />,
+    cell: ({ row }) => <TruncatedCell text={row.getValue("email") as string} />,
   },
   {
     accessorKey: "user_role",
-    header: () => <TruncatedCell text="Role" maxWidth="max-w-[100px]" />,
+    header: () => <TruncatedCell text="Role" />,
     cell: ({ row }) => {
       const role = row.getValue("user_role") as string;
       return (
@@ -71,20 +65,17 @@ export const userColumns: ColumnDef<User>[] = [
   },
   {
     accessorKey: "agency_id",
-    header: () => <TruncatedCell text="Agency" maxWidth="max-w-[100px]" />,
+    header: () => <TruncatedCell text="Agency" />,
     cell: ({ row }) => {
       const agency = row.getValue("agency_id") as string;
       return (
-        <TruncatedCell
-          text={agencyLabels[agency.toLowerCase()] || agency}
-          maxWidth="max-w-[100px]"
-        />
+        <TruncatedCell text={agencyLabels[agency.toLowerCase()] || agency} />
       );
     },
   },
   {
     accessorKey: "status",
-    header: () => <TruncatedCell text="Status" maxWidth="max-w-[80px]" />,
+    header: () => <TruncatedCell text="Status" />,
     cell: ({ row }) => {
       const status = row.getValue("status") as string;
       return (
@@ -97,9 +88,7 @@ export const userColumns: ColumnDef<User>[] = [
   },
   {
     accessorKey: "last_modified",
-    header: () => (
-      <TruncatedCell text="Last Modified" maxWidth="max-w-[120px]" />
-    ),
+    header: () => <TruncatedCell text="Last Modified" />,
     cell: ({ row }) => {
       const date = new Date(row.getValue("last_modified") as string);
       return (

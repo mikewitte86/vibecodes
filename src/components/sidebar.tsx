@@ -14,7 +14,6 @@ import {
   UserIcon,
   UsersIcon,
   FileText,
-  FileSpreadsheet,
   Shield,
   Upload,
   FilePlus,

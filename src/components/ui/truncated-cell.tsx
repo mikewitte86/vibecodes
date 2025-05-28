@@ -1,13 +1,17 @@
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useRef, useState, useEffect } from "react";
 
 interface TruncatedCellProps {
   text: string;
-  maxWidth?: string;
   className?: string;
 }
 
-export function TruncatedCell({ text, maxWidth = "max-w-[200px]", className }: TruncatedCellProps) {
+export function TruncatedCell({ text, className }: TruncatedCellProps) {
   const textRef = useRef<HTMLSpanElement>(null);
   const [isTruncated, setIsTruncated] = useState(false);
 
@@ -19,7 +23,11 @@ export function TruncatedCell({ text, maxWidth = "max-w-[200px]", className }: T
   }, [text]);
 
   const content = (
-    <span ref={textRef} className={`truncate block ${maxWidth} ${className || ''}`}>
+    <span
+      ref={textRef}
+      className={`truncate block w-full ${className || ""}`}
+      style={{ maxWidth: "100%" }}
+    >
       {text}
     </span>
   );
@@ -31,13 +39,11 @@ export function TruncatedCell({ text, maxWidth = "max-w-[200px]", className }: T
   return (
     <TooltipProvider>
       <Tooltip>
-        <TooltipTrigger asChild>
-          {content}
-        </TooltipTrigger>
+        <TooltipTrigger asChild>{content}</TooltipTrigger>
         <TooltipContent className="max-w-[400px]">
           <p className="break-words">{text}</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
   );
-} 
+}

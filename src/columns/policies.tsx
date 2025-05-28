@@ -13,80 +13,87 @@ const policyStatusColor: Record<string, string> = {
 export const policyColumns: ColumnDef<Policy>[] = [
   {
     accessorKey: "number",
-    header: () => <TruncatedCell text="Policy Number" maxWidth="max-w-[100px]" />,
+    header: () => <TruncatedCell text="Policy Number" />,
+    size: 100,
     cell: ({ row }) => (
-      <TruncatedCell 
-        text={row.getValue("number") as string} 
-        maxWidth="max-w-[100px]"
+      <TruncatedCell
+        text={row.getValue("number") as string}
         className="font-medium"
       />
     ),
   },
   {
     accessorKey: "carrier",
-    header: () => <TruncatedCell text="Carrier" maxWidth="max-w-[120px]" />,
+    size: 120,
+    header: () => <TruncatedCell text="Carrier" />,
     cell: ({ row }) => (
-      <TruncatedCell 
-        text={row.getValue("carrier") as string} 
-        maxWidth="max-w-[120px]"
-      />
+      <TruncatedCell text={row.getValue("carrier") as string} />
     ),
   },
   {
     accessorKey: "line_of_business",
-    header: () => <TruncatedCell text="Line of Business" maxWidth="max-w-[100px]" />,
+    size: 100,
+    header: () => <TruncatedCell text="Line of Business" />,
     cell: ({ row }) => {
-      const lob = row.getValue("line_of_business") as { lineOfBusinessName: string }[];
-      return (
-        <TruncatedCell 
-          text={lob?.[0]?.lineOfBusinessName || "N/A"} 
-          maxWidth="max-w-[100px]"
-        />
-      );
+      const lob = row.getValue("line_of_business") as {
+        lineOfBusinessName: string;
+      }[];
+      return <TruncatedCell text={lob?.[0]?.lineOfBusinessName || "N/A"} />;
     },
   },
   {
     accessorKey: "status",
-    header: () => <TruncatedCell text="Status" maxWidth="max-w-[80px]" />,
+    size: 80,
+    header: () => <TruncatedCell text="Status" />,
     cell: ({ row }) => {
       const status = (row.getValue("status") as string).toLowerCase();
-      return <StatusBadge value={status} color={policyStatusColor[status] || "bg-gray-100 text-gray-700"} />;
-    },
-  },
-  {
-    accessorKey: "premium",
-    header: () => <TruncatedCell text="Premium" maxWidth="max-w-[100px]" />,
-    cell: ({ row }) => (
-      <span className="font-mono whitespace-nowrap">${(row.getValue("premium") as number).toLocaleString()}</span>
-    ),
-  },
-  {
-    accessorKey: "insured",
-    header: () => <TruncatedCell text="Insured" maxWidth="max-w-[120px]" />,
-    cell: ({ row }) => {
-      const insured = row.getValue("insured") as { name: string };
       return (
-        <TruncatedCell 
-          text={insured?.name || "N/A"} 
-          maxWidth="max-w-[120px]"
+        <StatusBadge
+          value={status}
+          color={policyStatusColor[status] || "bg-gray-100 text-gray-700"}
         />
       );
     },
   },
   {
+    accessorKey: "premium",
+    size: 100,
+    header: () => <TruncatedCell text="Premium" />,
+    cell: ({ row }) => (
+      <span className="font-mono whitespace-nowrap">
+        ${(row.getValue("premium") as number).toLocaleString()}
+      </span>
+    ),
+  },
+  {
+    accessorKey: "insured",
+    size: 120,
+    header: () => <TruncatedCell text="Insured" />,
+    cell: ({ row }) => {
+      const insured = row.getValue("insured") as { name: string };
+      return <TruncatedCell text={insured?.name || "N/A"} />;
+    },
+  },
+  {
     accessorKey: "effective_date",
-    header: () => <TruncatedCell text="Effective Date" maxWidth="max-w-[100px]" />,
+    size: 100,
+    header: () => <TruncatedCell text="Effective Date" />,
     cell: ({ row }) => {
       const date = new Date(row.getValue("effective_date") as string);
-      return <span className="whitespace-nowrap">{date.toLocaleDateString()}</span>;
+      return (
+        <span className="whitespace-nowrap">{date.toLocaleDateString()}</span>
+      );
     },
   },
   {
     accessorKey: "expiration_date",
-    header: () => <TruncatedCell text="Expiration Date" maxWidth="max-w-[100px]" />,
+    size: 100,
+    header: () => <TruncatedCell text="Expiration Date" />,
     cell: ({ row }) => {
       const date = new Date(row.getValue("expiration_date") as string);
-      return <span className="whitespace-nowrap">{date.toLocaleDateString()}</span>;
+      return (
+        <span className="whitespace-nowrap">{date.toLocaleDateString()}</span>
+      );
     },
   },
-]; 
+];

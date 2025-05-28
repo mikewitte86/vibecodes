@@ -8,9 +8,7 @@ import {
   AddTaskFormValues,
 } from "@/components/modals/AddTaskDialog";
 import { RefreshCcw } from "lucide-react";
-import { Row } from "@tanstack/react-table";
-import { StatusBadge } from "@/components/ui/status-badge";
-import { TruncatedCell } from "@/components/ui/truncated-cell";
+import { taskColumns } from "@/columns/tasks";
 
 interface Task {
   id: string;
@@ -28,7 +26,7 @@ const mockTasks: Task[] = [
     id: "1",
     name: "Review Insurance Policy",
     description:
-      "Review and update the insurance policy for client XYZ Review and update the insurance policy for client XYZ Review and update the insurance policy for client XYZ",
+      "Process certificate request for Global Manufacturing Process certificate request for Global Manufacturing Process certificate request for Global Manufacturing",
     assignee: "John Doe",
     createdDate: "2024-03-20",
     priority: "Medium",
@@ -38,7 +36,7 @@ const mockTasks: Task[] = [
   {
     id: "2",
     name: "Process Claim",
-    description: "Process the claim for policy #12345",
+    description: "Process certificate request for Global Manufacturing",
     assignee: "Jane Smith",
     createdDate: "2024-03-19",
     priority: "Urgent",
@@ -60,68 +58,6 @@ const mockWorkflows = [
 const mockClients = [
   { name: "XYZ Corp", value: "xyz_corp" },
   { name: "ABC Inc", value: "abc_inc" },
-];
-
-const taskColumns = [
-  {
-    accessorKey: "name",
-    header: "Task Name",
-    size: 200,
-    cell: ({ row }: { row: Row<Task> }) => (
-      <TruncatedCell text={row.original.name} maxWidth="max-w-[200px]" />
-    ),
-  },
-  {
-    accessorKey: "description",
-    header: "Description",
-    size: 300,
-    cell: ({ row }: { row: Row<Task> }) => (
-      <TruncatedCell text={row.original.description} maxWidth="max-w-[300px]" />
-    ),
-  },
-  {
-    accessorKey: "assignee",
-    header: "Assignee",
-    size: 150,
-    cell: ({ row }: { row: Row<Task> }) => (
-      <TruncatedCell text={row.original.assignee} maxWidth="max-w-[150px]" />
-    ),
-  },
-  {
-    accessorKey: "createdDate",
-    header: "Created Date",
-    size: 150,
-    cell: ({ row }: { row: Row<Task> }) =>
-      new Date(row.original.createdDate).toLocaleDateString(),
-  },
-  {
-    accessorKey: "priority",
-    header: "Priority",
-    size: 100,
-    cell: ({ row }: { row: Row<Task> }) => {
-      const priority = row.original.priority;
-      const color = {
-        Low: "bg-blue-100 text-blue-800",
-        Medium: "bg-yellow-100 text-yellow-800",
-        Urgent: "bg-red-100 text-red-800",
-      }[priority];
-      return <StatusBadge value={priority} color={color} />;
-    },
-  },
-  {
-    accessorKey: "status",
-    header: "Status",
-    size: 100,
-    cell: ({ row }: { row: Row<Task> }) => {
-      const status = row.original.status;
-      const color = {
-        Open: "bg-green-100 text-green-800",
-        Closed: "bg-gray-100 text-gray-800",
-        Archived: "bg-purple-100 text-purple-800",
-      }[status];
-      return <StatusBadge value={status} color={color} />;
-    },
-  },
 ];
 
 export default function TasksPage() {

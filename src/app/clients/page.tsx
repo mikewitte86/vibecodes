@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
-import { customerColumns } from "@/columns/companies";
+import { customerColumns } from "@/columns/clients";
 import { customerApi } from "@/lib/api";
 import { RefreshCcw } from "lucide-react";
 import { cn } from "@/lib/utils";

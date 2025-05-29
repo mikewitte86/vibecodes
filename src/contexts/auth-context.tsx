@@ -15,7 +15,7 @@ import { useLoader } from "@/contexts/loader-context";
 interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
-  signIn: (username: string, password: string) => Promise<void>;
+  signIn: (username: string, password: string, callbackUrl?: string) => Promise<void>;
   signOut: () => Promise<void>;
   user: AuthUser | null;
 }
@@ -69,7 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initAuth();
   }, [initAuth]);
 
-  const signIn = useCallback(async (username: string, password: string) => {
+  const signIn = useCallback(async (username: string, password: string, callbackUrl: string = "/") => {
     try {
       await amplifySignIn({ username, password });
       const currentUser = await getCurrentUser();
@@ -79,7 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user: currentUser,
       });
       Cookies.set("auth-token", "true", { expires: 7 });
-      router.push("/");
+      router.push(callbackUrl);
     } catch (error) {
       throw error;
     }

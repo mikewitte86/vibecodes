@@ -18,6 +18,7 @@ import { z } from "zod";
 import { useEffect, useState } from "react";
 import { useLoader } from "@/contexts/loader-context";
 import Image from "next/image";
+import { useSearchParams } from "next/navigation";
 
 const signInSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -29,6 +30,8 @@ type SignInFormData = z.infer<typeof signInSchema>;
 export default function SignIn() {
   const { signIn, isAuthenticated, isLoading } = useAuth();
   const { setShow } = useLoader();
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get("callbackUrl") || "/";
 
   const {
     control,
@@ -62,7 +65,7 @@ export default function SignIn() {
   const onSubmit = async (data: SignInFormData) => {
     setShowLocalLoader(true);
     try {
-      await signIn(data.username, data.password);
+      await signIn(data.username, data.password, callbackUrl);
     } catch (error: unknown) {
       setShowLocalLoader(false);
       setShow(false);

@@ -48,7 +48,7 @@
     "@shadcn/ui": "^0.0.4",
     "@tailwindcss/postcss": "^4",
     "@types/js-cookie": "^3.0.6",
-    "@types/node": "^20",
+    "@types/node": "^20.17.52",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",

@@ -1,76 +1,88 @@
-import { Row } from "@tanstack/react-table";
-import { StatusBadge } from "@/components/ui/status-badge";
-import { TruncatedCell } from "@/components/ui/truncated-cell";
+"use client"
 
-interface Task {
-  id: string;
-  name: string;
-  description: string;
-  assignee: string;
-  createdDate: string;
-  priority: "Low" | "Medium" | "Urgent";
-  status: "Open" | "Closed" | "Archived";
-  clientName: string;
+import { ColumnDef } from "@tanstack/react-table"
+import { Task } from "@/types/task"
+import { StatusBadge } from "@/components/ui/status-badge"
+import { TruncatedCell } from "@/components/ui/truncated-cell"
+import { useRouter } from "next/navigation"
+
+function ClickableCell({ text, id }: { text: string; id: string }) {
+  const router = useRouter()
+  return (
+    <div
+      className="cursor-pointer hover:text-blue-600"
+      onClick={() => router.push(`/tasks/${id}`)}
+    >
+      <TruncatedCell text={text} />
+    </div>
+  )
 }
 
-export const taskColumns = [
+export const taskColumns: ColumnDef<Task, unknown>[] = [
   {
     accessorKey: "name",
     header: "Task Name",
     size: 150,
-    cell: ({ row }: { row: Row<Task> }) => (
-      <TruncatedCell text={row.original.name} />
+    cell: ({ row }) => (
+      <ClickableCell text={row.getValue("name")} id={row.original.id} />
     ),
   },
   {
     accessorKey: "description",
     header: "Description",
     size: 300,
-    cell: ({ row }: { row: Row<Task> }) => (
-      <TruncatedCell text={row.original.description} />
-    ),
+    cell: ({ row }) => <TruncatedCell text={row.getValue("description")} />,
   },
   {
     accessorKey: "assignee",
     header: "Assignee",
     size: 100,
-    cell: ({ row }: { row: Row<Task> }) => (
-      <TruncatedCell text={row.original.assignee} />
-    ),
+    cell: ({ row }) => <TruncatedCell text={row.getValue("assignee")} />,
   },
   {
     accessorKey: "createdDate",
     header: "Created Date",
     size: 100,
-    cell: ({ row }: { row: Row<Task> }) =>
-      new Date(row.original.createdDate).toLocaleDateString(),
+    cell: ({ row }) => new Date(row.getValue("createdDate")).toLocaleDateString(),
   },
   {
     accessorKey: "priority",
     header: "Priority",
     size: 70,
-    cell: ({ row }: { row: Row<Task> }) => {
-      const priority = row.original.priority;
-      const color = {
-        Low: "bg-blue-100 text-blue-800",
-        Medium: "bg-yellow-100 text-yellow-800",
-        Urgent: "bg-red-100 text-red-800",
-      }[priority];
-      return <StatusBadge value={priority} color={color} />;
+    cell: ({ row }) => {
+      const priority = row.getValue("priority") as string
+      return (
+        <StatusBadge
+          status={priority}
+          variant={
+            priority === "Urgent"
+              ? "destructive"
+              : priority === "Medium"
+              ? "warning"
+              : "default"
+          }
+        />
+      )
     },
   },
   {
     accessorKey: "status",
     header: "Status",
     size: 70,
-    cell: ({ row }: { row: Row<Task> }) => {
-      const status = row.original.status;
-      const color = {
-        Open: "bg-green-100 text-green-800",
-        Closed: "bg-gray-100 text-gray-800",
-        Archived: "bg-purple-100 text-purple-800",
-      }[status];
-      return <StatusBadge value={status} color={color} />;
+    cell: ({ row }) => {
+      const status = row.getValue("status") as string
+      return (
+        <StatusBadge
+          status={status}
+          variant={
+            status === "Open"
+              ? "default"
+              : status === "Closed"
+              ? "success"
+              : "secondary"
+          }
+        />
+      )
     },
   },
-];
+]

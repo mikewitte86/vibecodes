@@ -9,17 +9,7 @@ import {
 } from "@/components/modals/AddTaskDialog";
 import { RefreshCcw } from "lucide-react";
 import { taskColumns } from "@/columns/tasks";
-
-interface Task {
-  id: string;
-  name: string;
-  description: string;
-  assignee: string;
-  createdDate: string;
-  priority: "Low" | "Medium" | "Urgent";
-  status: "Open" | "Closed" | "Archived";
-  clientName: string;
-}
+import { Task } from "@/types/task";
 
 const mockTasks: Task[] = [
   {
@@ -32,6 +22,13 @@ const mockTasks: Task[] = [
     priority: "Medium",
     status: "Open",
     clientName: "XYZ Corp",
+    policyLOB: "Property",
+    policyId: "POL-123",
+    applicationName: "Policy Review",
+    applicationId: "APP-456",
+    assignedWorkflow: "Standard Review Process",
+    createdBy: "Admin User",
+    steps: [],
   },
   {
     id: "2",
@@ -42,6 +39,13 @@ const mockTasks: Task[] = [
     priority: "Urgent",
     status: "Open",
     clientName: "ABC Inc",
+    policyLOB: "Auto",
+    policyId: "POL-456",
+    applicationName: "Claim Processing",
+    applicationId: "APP-789",
+    assignedWorkflow: "Claim Workflow",
+    createdBy: "Admin User",
+    steps: [],
   },
 ];
 

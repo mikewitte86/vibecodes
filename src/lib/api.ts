@@ -149,3 +149,13 @@ export const customerApi = {
     return response.data;
   },
 };
+
+export const applicationsApi = {
+  getApplications: async (page: number = 1, perPage: number = 10): Promise<any> => {
+    const params = new URLSearchParams();
+    params.set("page", String(page));
+    params.set("per_page", String(perPage));
+    const response = await api.get(`/submissions/applications?${params.toString()}`);
+    return response.data;
+  },
+};

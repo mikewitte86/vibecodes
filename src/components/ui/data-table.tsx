@@ -34,6 +34,7 @@ interface DataTableProps<TData, TValue> {
   onPaginationChange?: (token: string | undefined) => void;
   hasMorePages?: boolean;
   nextPageToken?: string;
+  prevPageToken?: string;
 }
 
 export function DataTable<TData, TValue>({
@@ -44,6 +45,7 @@ export function DataTable<TData, TValue>({
   onPaginationChange,
   hasMorePages,
   nextPageToken,
+  prevPageToken,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
 
@@ -137,10 +139,10 @@ export function DataTable<TData, TValue>({
             <PaginationContent>
               <PaginationItem>
                 <PaginationPrevious
-                  onClick={() => onPaginationChange(undefined)}
+                  onClick={() => onPaginationChange(prevPageToken)}
                   className={cn(
                     "cursor-pointer",
-                    !paginationToken && "pointer-events-none opacity-50",
+                    !prevPageToken && "pointer-events-none opacity-50",
                   )}
                 />
               </PaginationItem>

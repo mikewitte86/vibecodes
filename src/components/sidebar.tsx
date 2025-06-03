@@ -21,6 +21,7 @@ import {
   CalendarCheck,
   DollarSign,
   Building2,
+  BriefcaseBusiness,
 } from "lucide-react";
 import Image from "next/image";
 
@@ -32,6 +33,7 @@ const navigationSections = [
       { name: "Clients", href: "/clients", icon: Building2 },
       { name: "Policies", href: "/policies", icon: FileText },
       { name: "Invoices", href: "/invoices", icon: DollarSign },
+      { name: "Applications", href: "/applications", icon: BriefcaseBusiness },
     ],
   },
   {

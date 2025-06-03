@@ -73,6 +73,43 @@ export interface CustomersResponse {
   };
 }
 
+export interface Application {
+  id: string;
+  name: string;
+  status: string;
+  open_status: string | null;
+  application_type: string;
+  created_at: string;
+  updated_at: string;
+  submitted_at: string | null;
+  closed_at: string | null;
+  brokerage_firm: { name: string };
+  company: {
+    id: string | null;
+    name: string | null;
+    email: string | null;
+    phone: string | null;
+    address: string | null;
+  };
+  lines_of_business: { title?: string }[];
+}
+
+export interface ApplicationsPagination {
+  page: number;
+  per_page: number;
+  total: number;
+  total_pages: number;
+}
+
+export interface ApplicationsResponse {
+  statusCode: number;
+  body: {
+    applications: Application[];
+    count: number;
+    pagination: ApplicationsPagination;
+  };
+}
+
 const api = axios.create({
   baseURL: "/api",
 });
@@ -151,7 +188,7 @@ export const customerApi = {
 };
 
 export const applicationsApi = {
-  getApplications: async (page: number = 1, perPage: number = 10): Promise<any> => {
+  getApplications: async (page: number = 1, perPage: number = 10): Promise<ApplicationsResponse> => {
     const params = new URLSearchParams();
     params.set("page", String(page));
     params.set("per_page", String(perPage));

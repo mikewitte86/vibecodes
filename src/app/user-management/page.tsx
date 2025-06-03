@@ -183,8 +183,6 @@ export default function UserManagementPage() {
           columns={columns}
           data={data?.users || []}
           isLoading={isLoading}
-          paginationToken={paginationToken}
-          onPaginationChange={setPaginationToken}
           hasMorePages={hasMorePages}
           nextPageToken={data?.pagination_token}
         />

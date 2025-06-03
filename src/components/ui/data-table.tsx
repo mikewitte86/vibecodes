@@ -30,7 +30,6 @@ interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   isLoading?: boolean;
-  paginationToken?: string;
   onPaginationChange?: (token: string | undefined) => void;
   hasMorePages?: boolean;
   nextPageToken?: string;
@@ -41,7 +40,6 @@ export function DataTable<TData, TValue>({
   columns,
   data,
   isLoading,
-  paginationToken,
   onPaginationChange,
   hasMorePages,
   nextPageToken,

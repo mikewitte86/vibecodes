@@ -8,16 +8,9 @@ import { applicationsApi } from "@/lib/api";
 import { Plus } from "lucide-react";
 import { useState, useEffect } from "react";
 import { AddApplicationDialog } from "@/components/modals/AddApplicationDialog";
+import { Application, ApplicationsResponse } from "@/lib/api";
 
 const PER_PAGE = 10;
-
-type ApplicationsApiResponse = {
-  statusCode: number;
-  body: {
-    applications: any[];
-    pagination?: { total: number };
-  };
-};
 
 const subAgencies = [
   { name: "Lumen", value: "Lumen" },
@@ -49,15 +42,27 @@ export default function ApplicationsPage() {
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
 
-  const { data, isLoading } = useQuery<ApplicationsApiResponse>({
+  const { data, isLoading } = useQuery<ApplicationsResponse>({
     queryKey: ["applications", page],
     queryFn: () => applicationsApi.getApplications(page, PER_PAGE),
   });
 
-  const safeData =
+  const safeData: ApplicationsResponse =
     data && data.body
       ? data
-      : { body: { applications: [], pagination: { total: 0 } } };
+      : {
+          statusCode: 200,
+          body: {
+            applications: [],
+            count: 0,
+            pagination: {
+              page: 1,
+              per_page: PER_PAGE,
+              total: 0,
+              total_pages: 1,
+            },
+          },
+        };
 
   useEffect(() => {
     if (safeData.body.pagination?.total) {
@@ -65,24 +70,26 @@ export default function ApplicationsPage() {
     }
   }, [safeData.body.pagination?.total]);
 
-  const applications = (safeData.body.applications || []).map((app: any) => ({
-    id: app.id,
-    subAgencyName: app.name || "-",
-    clientName: app.company?.name || "-",
-    applicationLob:
-      app.lines_of_business.length > 0
-        ? app.lines_of_business.map((lob: any) => lob.title || lob).join(", ")
-        : "-",
-    type: app.application_type || "-",
-    primaryContact: app.brokerage_firm.name || "-",
-  }));
+  const applications = (safeData.body.applications || []).map(
+    (app: Application) => ({
+      id: app.id,
+      subAgencyName: app.name || "-",
+      clientName: app.company?.name || "-",
+      applicationLob:
+        app.lines_of_business && app.lines_of_business.length > 0
+          ? app.lines_of_business.map((lob) => lob.title || lob).join(", ")
+          : "-",
+      type: app.application_type || "-",
+      primaryContact: app.brokerage_firm?.name || "-",
+    }),
+  );
 
   const total = safeData.body.pagination?.total || 0;
   const hasMorePages = page * PER_PAGE < total;
   const start = (page - 1) * PER_PAGE + 1;
   const end = Math.min(page * PER_PAGE, totalCount);
 
-  const handleAddApplication = async (form: any) => {
+  const handleAddApplication = async () => {
     setIsSubmitting(true);
     setError(null);
     // Simulate API call
@@ -118,7 +125,6 @@ export default function ApplicationsPage() {
           columns={applicationColumns}
           data={applications}
           isLoading={isLoading}
-          paginationToken={String(page)}
           onPaginationChange={(token) => {
             if (token) {
               setPage(parseInt(token, 10));

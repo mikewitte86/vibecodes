@@ -18,7 +18,6 @@ import {
 } from "@/components/ui/select";
 import { Combobox, ComboboxOption } from "@/components/Combobox";
 import { useForm, Controller } from "react-hook-form";
-import { useState } from "react";
 
 export interface AddApplicationFormValues {
   subAgency: string;
@@ -59,20 +58,8 @@ export function AddApplicationDialog({
     },
   });
 
-  const [clientQuery, setClientQuery] = useState("");
-  const [contactQuery, setContactQuery] = useState("");
-  const filteredClients =
-    clientQuery === ""
-      ? clients
-      : clients.filter((c) =>
-          c.label.toLowerCase().includes(clientQuery.toLowerCase()),
-        );
-  const filteredContacts =
-    contactQuery === ""
-      ? contacts
-      : contacts.filter((c) =>
-          c.label.toLowerCase().includes(contactQuery.toLowerCase()),
-        );
+  const filteredClients = clients;
+  const filteredContacts = contacts;
 
   function handleDialogClose() {
     reset();

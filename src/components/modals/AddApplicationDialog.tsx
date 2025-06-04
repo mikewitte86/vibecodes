@@ -85,19 +85,24 @@ export function AddApplicationDialog({
     setContactOptions([]);
   }, [selectedSubAgency]);
 
-  function handleDialogClose() {
+  function handleDialogResetAndClose() {
     reset();
+    setClientOptions([]);
+    setContactOptions([]);
     onOpenChange(false);
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleDialogClose}>
+    <Dialog open={open} onOpenChange={handleDialogResetAndClose}>
       <DialogContent className="max-w-lg w-full !p-0">
         <DialogHeader className="bg-gray-150 border-b border-gray-200 p-4">
           <DialogTitle>Create New Application</DialogTitle>
         </DialogHeader>
         <form
-          onSubmit={handleSubmit(onSubmit)}
+          onSubmit={handleSubmit((data) => {
+            onSubmit(data);
+            handleDialogResetAndClose();
+          })}
           className="space-y-4 mt-2 px-4 pb-4"
         >
           {error && <div className="text-red-600 text-sm">{error}</div>}
@@ -218,7 +223,7 @@ export function AddApplicationDialog({
           )}
           <DialogFooter className="flex flex-row gap-2 justify-end mt-4">
             <DialogClose asChild>
-              <Button type="button" variant="outline" disabled={isSubmitting}>
+              <Button type="button" variant="outline" disabled={isSubmitting} onClick={handleDialogResetAndClose}>
                 Cancel
               </Button>
             </DialogClose>

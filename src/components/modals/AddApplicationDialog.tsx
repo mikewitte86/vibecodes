@@ -18,6 +18,8 @@ import {
 } from "@/components/ui/select";
 import { Combobox, ComboboxOption } from "@/components/Combobox";
 import { useForm, Controller } from "react-hook-form";
+import { useState, useEffect } from "react";
+import { customerApi } from "@/lib/api";
 
 export interface AddApplicationFormValues {
   subAgency: string;
@@ -49,17 +51,43 @@ export function AddApplicationDialog({
   isSubmitting,
   error,
 }: AddApplicationDialogProps) {
-  const { control, handleSubmit, reset } = useForm<AddApplicationFormValues>({
-    defaultValues: {
-      subAgency: "",
-      applicationType: "",
-      client: "",
-      primaryContact: "",
-    },
-  });
+  const { control, handleSubmit, reset, watch } =
+    useForm<AddApplicationFormValues>({
+      defaultValues: {
+        subAgency: "",
+        applicationType: "",
+        client: "",
+        primaryContact: "",
+      },
+    });
 
-  const filteredClients = clients;
-  const filteredContacts = contacts;
+  const [clientOptions, setClientOptions] = useState<ComboboxOption[]>([]);
+  const [contactOptions, setContactOptions] = useState<ComboboxOption[]>([]);
+  const [clientsLoading, setClientsLoading] = useState(false);
+
+  const selectedSubAgency = watch("subAgency");
+
+  useEffect(() => {
+    if (selectedSubAgency) {
+      setClientsLoading(true);
+      customerApi
+        .getCustomers(selectedSubAgency)
+        .then((res) => {
+          setClientOptions(
+            (res.body.customers || []).map((c) => ({
+              value: c.id,
+              label: c.name,
+              status: c.status,
+            })),
+          );
+        })
+        .finally(() => setClientsLoading(false));
+    } else {
+      setClientOptions([]);
+    }
+    // Hide contacts until client is selected (optional)
+    setContactOptions([]);
+  }, [selectedSubAgency]);
 
   function handleDialogClose() {
     reset();
@@ -130,60 +158,68 @@ export function AddApplicationDialog({
               )}
             />
           </div>
-          <div className="space-y-2">
-            <Label>Select Client</Label>
-            <Controller
-              name="client"
-              control={control}
-              render={({ field }) => (
-                <Combobox
-                  options={filteredClients as ComboboxOption[]}
-                  value={field.value}
-                  onChange={field.onChange}
-                  placeholder="Search clients from Hubspot..."
-                  disabled={isSubmitting}
-                  displayValue={(val) =>
-                    clients.find((c) => c.value === val)?.label || ""
-                  }
-                />
-              )}
-            />
-            <Button
-              type="button"
-              variant="outline"
-              className="mt-2 w-full"
-              disabled={isSubmitting}
-            >
-              + Add New Client
-            </Button>
-          </div>
-          <div className="space-y-2">
-            <Label>Select Primary Contact</Label>
-            <Controller
-              name="primaryContact"
-              control={control}
-              render={({ field }) => (
-                <Combobox
-                  options={filteredContacts as ComboboxOption[]}
-                  value={field.value}
-                  onChange={field.onChange}
-                  placeholder="Search contacts from Hubspot..."
-                  disabled={isSubmitting}
-                  displayValue={(val) =>
-                    contacts.find((c) => c.value === val)?.label || ""
-                  }
-                />
-              )}
-            />
-            <Button
-              type="button"
-              variant="outline"
-              className="mt-2 w-full"
-              disabled={isSubmitting}
-            >
-              + Add New Contact
-            </Button>
-          </div>
+          {selectedSubAgency && (
+            <div className="space-y-2">
+              <Label>Select Client</Label>
+              <Controller
+                name="client"
+                control={control}
+                render={({ field }) => (
+                  <Combobox
+                    options={clientOptions}
+                    value={field.value}
+                    onChange={field.onChange}
+                    placeholder={
+                      clientsLoading
+                        ? "Loading clients..."
+                        : "Search clients..."
+                    }
+                    disabled={isSubmitting || clientsLoading}
+                    displayValue={(val) =>
+                      clientOptions.find((c) => c.value === val)?.label || ""
+                    }
+                  />
+                )}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-2 w-full"
+                disabled={isSubmitting}
+              >
+                + Add New Client
+              </Button>
+            </div>
+          )}
+          {selectedSubAgency && (
+            <div className="space-y-2">
+              <Label>Select Primary Contact</Label>
+              <Controller
+                name="primaryContact"
+                control={control}
+                render={({ field }) => (
+                  <Combobox
+                    options={contactOptions}
+                    value={field.value}
+                    onChange={field.onChange}
+                    placeholder="Search contacts..."
+                    disabled={isSubmitting}
+                    displayValue={(val) =>
+                      contactOptions.find((c) => c.value === val)?.label || ""
+                    }
+                  />
+                )}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-2 w-full"
+                disabled={isSubmitting}
+              >
+                + Add New Contact
+              </Button>
+            </div>
+          )}
           <DialogFooter className="flex flex-row gap-2 justify-end mt-4">
             <DialogClose asChild>
               <Button type="button" variant="outline" disabled={isSubmitting}>
@@ -191,7 +227,7 @@ export function AddApplicationDialog({
               </Button>
             </DialogClose>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Submitting..." : "Review Application"}
+              {isSubmitting ? "Submitting..." : "Create Application"}
             </Button>
           </DialogFooter>
         </form>

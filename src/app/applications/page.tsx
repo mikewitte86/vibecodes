@@ -21,7 +21,7 @@ import {
 const PER_PAGE = 10;
 
 const subAgencies = [
-  { name: "Lumen", value: "Lumen" },
+  { name: "Lumen", value: "lumen" },
   { name: "Equal Parts", value: "equalparts" },
 ];
 const applicationTypes = [

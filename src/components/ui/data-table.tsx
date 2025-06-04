@@ -132,30 +132,28 @@ export function DataTable<TData, TValue>({
       </div>
 
       {hasMorePages && onPaginationChange && (
-        <div className="flex items-center justify-end">
-          <Pagination>
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious
-                  onClick={() => onPaginationChange(prevPageToken)}
-                  className={cn(
-                    "cursor-pointer",
-                    !prevPageToken && "pointer-events-none opacity-50",
-                  )}
-                />
-              </PaginationItem>
-              <PaginationItem>
-                <PaginationNext
-                  onClick={() => onPaginationChange(nextPageToken)}
-                  className={cn(
-                    "cursor-pointer",
-                    !hasMorePages && "pointer-events-none opacity-50",
-                  )}
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
-        </div>
+        <Pagination className="justify-end">
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                onClick={() => onPaginationChange(prevPageToken)}
+                className={cn(
+                  "cursor-pointer",
+                  !prevPageToken && "pointer-events-none opacity-50",
+                )}
+              />
+            </PaginationItem>
+            <PaginationItem>
+              <PaginationNext
+                onClick={() => onPaginationChange(nextPageToken)}
+                className={cn(
+                  "cursor-pointer",
+                  !hasMorePages && "pointer-events-none opacity-50",
+                )}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
       )}
     </div>
   );

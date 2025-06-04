@@ -5,10 +5,18 @@ import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
 import { applicationColumns } from "@/columns/applications";
 import { applicationsApi } from "@/lib/api";
-import { Plus } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { useState, useEffect } from "react";
 import { AddApplicationDialog } from "@/components/modals/AddApplicationDialog";
 import { Application, ApplicationsResponse } from "@/lib/api";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 
 const PER_PAGE = 10;
 
@@ -117,6 +125,43 @@ export default function ApplicationsPage() {
             <Plus className="h-4 w-4 mr-2" />
             Create Application
           </Button>
+        </div>
+      </div>
+
+      <div className="px-4 sm:px-6 mt-6 mb-4 flex flex-col md:flex-row gap-3 md:gap-4 items-start justify-between md:items-center">
+        <div className="relative w-full max-w-[400px]">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+            <Search className="w-4 h-4" />
+          </span>
+          <Input className="pl-9 w-full" placeholder="Search applications..." />
+        </div>
+        <div className="flex items-center gap-4">
+          <Select>
+            <SelectTrigger className="w-full md:w-48">
+              <SelectValue placeholder="Filter by Sub-Agency" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Sub-Agencies</SelectItem>
+              {subAgencies.map((agency) => (
+                <SelectItem key={agency.value} value={agency.value}>
+                  {agency.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select>
+            <SelectTrigger className="w-full md:w-48">
+              <SelectValue placeholder="Filter by Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              {applicationTypes.map((type) => (
+                <SelectItem key={type.value} value={type.value}>
+                  {type.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 

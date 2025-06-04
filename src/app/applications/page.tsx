@@ -29,19 +29,6 @@ const applicationTypes = [
   { name: "Renewal", value: "renewal" },
   { name: "BOR Change", value: "bor_change" },
 ];
-const clients = [
-  { value: "acme", label: "Acme Corporation", status: "Active" },
-  { value: "techstart", label: "TechStart Inc", status: "Active" },
-  { value: "global", label: "Global Manufacturing" },
-  { value: "retail", label: "Retail Solutions", status: "Active" },
-];
-const contacts = [
-  { value: "john", label: "John Smith" },
-  { value: "jane", label: "Jane Doe" },
-  { value: "robert", label: "Robert Johnson" },
-  { value: "sarah", label: "Sarah Williams" },
-  { value: "michael", label: "Michael Brown" },
-];
 
 export default function ApplicationsPage() {
   const [open, setOpen] = useState(false);
@@ -187,8 +174,6 @@ export default function ApplicationsPage() {
         onSubmit={handleAddApplication}
         subAgencies={subAgencies}
         applicationTypes={applicationTypes}
-        clients={clients}
-        contacts={contacts}
         isSubmitting={isSubmitting}
         error={error}
       />

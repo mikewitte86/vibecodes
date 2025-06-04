@@ -34,8 +34,6 @@ interface AddApplicationDialogProps {
   onSubmit: (form: AddApplicationFormValues) => void;
   subAgencies: { name: string; value: string }[];
   applicationTypes: { name: string; value: string }[];
-  clients: { value: string; label: string; status?: string }[];
-  contacts: { value: string; label: string }[];
   isSubmitting?: boolean;
   error?: string | null;
 }
@@ -46,8 +44,6 @@ export function AddApplicationDialog({
   onSubmit,
   subAgencies,
   applicationTypes,
-  clients,
-  contacts,
   isSubmitting,
   error,
 }: AddApplicationDialogProps) {

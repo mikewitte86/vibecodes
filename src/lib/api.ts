@@ -1,6 +1,6 @@
 import axios, { InternalAxiosRequestConfig } from "axios";
-import { fetchAuthSession } from "aws-amplify/auth";
 import { User, UsersResponse } from "@/types/api";
+import Cookies from "js-cookie";
 
 export interface LineOfBusiness {
   databaseId: string;
@@ -110,18 +110,22 @@ export interface ApplicationsResponse {
   };
 }
 
+export interface PolicyResponse {
+  statusCode: number;
+  body: {
+    policy: Policy;
+  };
+}
+
 const api = axios.create({
   baseURL: "/api",
 });
 
 api.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
-  const session = await fetchAuthSession();
-  const token = session.tokens?.idToken?.toString();
-
+  const token = Cookies.get("auth-token");
   if (token) {
-    config.headers.Authorization = token;
+    config.headers.Authorization = `Bearer ${token}`;
   }
-
   return config;
 });
 
@@ -172,6 +176,12 @@ export const policyApi = {
       params.set('by_customer', customerId);
     }
     const response = await api.get<PoliciesResponse>(`/policies?${params.toString()}`);
+    return response.data;
+  },
+  getPolicy: async (id: string, agencyId: string): Promise<PolicyResponse> => {
+    const params = new URLSearchParams();
+    params.set('agency_id', agencyId);
+    const response = await api.get<PolicyResponse>(`/policies/${id}?${params.toString()}`);
     return response.data;
   },
 };

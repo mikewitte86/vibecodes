@@ -13,8 +13,44 @@ import {
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { StatusCard } from "@/components/dashboard/status-card";
 import { ActivityCard } from "@/components/dashboard/activity-card";
+import { Suspense, useEffect, useState } from "react";
+import { ErrorBoundary } from "react-error-boundary";
 
-export default function Home() {
+function ErrorFallback({ error }: { error: Error }) {
+  return (
+    <div className="flex min-h-screen items-center justify-center">
+      <div className="text-center">
+        <h2 className="text-lg font-semibold">Something went wrong:</h2>
+        <pre className="mt-2 text-red-600">{error.message}</pre>
+      </div>
+    </div>
+  );
+}
+
+function LoadingFallback() {
+  return (
+    <div className="flex min-h-screen items-center justify-center">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+    </div>
+  );
+}
+
+function DashboardContent() {
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Simulate data loading
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (isLoading) {
+    return <LoadingFallback />;
+  }
+
   const metrics = [
     {
       title: "Total Premium",
@@ -125,8 +161,8 @@ export default function Home() {
 
   return (
     <div className="space-y-8 pb-8">
-      <div className="px-6 bg-gray-150 border-b border-gray-200 py-4">
-        <h1 className="text-2xl font-bold">Dashboard</h1>
+      <div className="px-6 bg-gray-50 border-b border-gray-200 py-4">
+        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
         <p className="text-gray-500 text-sm mt-1">
           Overview of your agency&apos;s key metrics and performance.
         </p>
@@ -156,5 +192,15 @@ export default function Home() {
         />
       </div>
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <ErrorBoundary FallbackComponent={ErrorFallback}>
+      <Suspense fallback={<LoadingFallback />}>
+        <DashboardContent />
+      </Suspense>
+    </ErrorBoundary>
   );
 }

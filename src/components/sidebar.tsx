@@ -21,7 +21,7 @@ import {
   CalendarCheck,
   DollarSign,
   Building2,
-  BriefcaseBusiness,
+  Briefcase,
 } from "lucide-react";
 import Image from "next/image";
 
@@ -33,7 +33,7 @@ const navigationSections = [
       { name: "Clients", href: "/clients", icon: Building2 },
       { name: "Policies", href: "/policies", icon: FileText },
       { name: "Invoices", href: "/invoices", icon: DollarSign },
-      { name: "Applications", href: "/applications", icon: BriefcaseBusiness },
+      { name: "Applications", href: "/applications", icon: Briefcase },
     ],
   },
   {
@@ -137,7 +137,7 @@ export function Sidebar() {
           </div>
           {!isCollapsed && (
             <span className="truncate">
-              {user?.signInDetails?.loginId || "User"}
+              {user?.name || "User"}
             </span>
           )}
         </div>

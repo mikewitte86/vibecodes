@@ -2,11 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
-import { Sidebar } from "@/components/sidebar";
-import { SidebarProvider } from "@/contexts/sidebar-context";
-import { ContentWrapper } from "@/components/content-wrapper";
-import { LoaderProvider } from "@/contexts/loader-context";
-import ClientLayoutContent from "@/components/client-layout-content";
+import { cn } from "@/lib/utils";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -21,24 +17,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
-        <LoaderProvider>
-          <ClientLayoutContent>
-            <Providers>
-              <SidebarProvider>
-                <div className="flex min-h-screen">
-                  <Sidebar />
-                  <main className="flex-1">
-                    <ContentWrapper>
-                      <div className="container max-w-none">{children}</div>
-                    </ContentWrapper>
-                  </main>
-                </div>
-              </SidebarProvider>
-            </Providers>
-          </ClientLayoutContent>
-        </LoaderProvider>
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+      </head>
+      <body className={cn("min-h-screen bg-gray-50 text-gray-900", inter.className)}>
+        <Providers>
+          <main className="relative flex min-h-screen flex-col">
+            {children}
+          </main>
+        </Providers>
       </body>
     </html>
   );

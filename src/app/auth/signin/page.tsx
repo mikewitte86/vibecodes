@@ -12,12 +12,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { useForm, Controller } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useEffect, useState } from "react";
-import { useLoader } from "@/contexts/loader-context";
-import Image from "next/image";
+import { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 
 const signInSchema = z.object({
@@ -28,13 +26,12 @@ const signInSchema = z.object({
 type SignInFormData = z.infer<typeof signInSchema>;
 
 export default function SignIn() {
-  const { signIn, isAuthenticated, isLoading } = useAuth();
-  const { setShow } = useLoader();
+  const { signIn, isAuthenticated } = useAuth();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/";
 
   const {
-    control,
+    register,
     handleSubmit,
     formState: { errors, isSubmitting },
     setError,
@@ -46,29 +43,10 @@ export default function SignIn() {
     },
   });
 
-  const [showLocalLoader, setShowLocalLoader] = useState(false);
-  useEffect(() => {
-    let timer: NodeJS.Timeout | undefined;
-    if (showLocalLoader) {
-      setShow(true);
-      timer = setTimeout(() => setShow(false), 2000);
-    }
-    return () => timer && clearTimeout(timer);
-  }, [showLocalLoader, setShow]);
-
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      setShow(false);
-    }
-  }, [isLoading, isAuthenticated, setShow]);
-
   const onSubmit = async (data: SignInFormData) => {
-    setShowLocalLoader(true);
     try {
       await signIn(data.username, data.password, callbackUrl);
     } catch (error: unknown) {
-      setShowLocalLoader(false);
-      setShow(false);
       const errorMessage =
         error instanceof Error ? error.message : "Failed to sign in";
       setError("root", {
@@ -78,21 +56,11 @@ export default function SignIn() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <Card className="w-[400px] pt-6">
-        <CardHeader className="text-center">
-          <div className="flex flex-col items-center mb-2">
-            <Image
-              src="/logoBlue.png"
-              alt="Logo"
-              width={180}
-              height={80}
-              className="mb-2"
-              priority
-            />
-          </div>
-          <CardTitle>Sign In</CardTitle>
-          <CardDescription>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <Card className="w-[400px]">
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl text-center">Sign in</CardTitle>
+          <CardDescription className="text-center">
             Enter your credentials to access your account
           </CardDescription>
         </CardHeader>
@@ -100,51 +68,45 @@ export default function SignIn() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="username">Username</Label>
-              <Controller
-                name="username"
-                control={control}
-                render={({ field }) => (
-                  <Input
-                    {...field}
-                    id="username"
-                    type="text"
-                    aria-invalid={!!errors.username}
-                  />
-                )}
+              <Input
+                id="username"
+                type="text"
+                placeholder="Enter your username"
+                {...register("username")}
               />
               {errors.username && (
-                <p className="text-sm text-red-500">
+                <p className="text-sm text-destructive">
                   {errors.username.message}
                 </p>
               )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Controller
-                name="password"
-                control={control}
-                render={({ field }) => (
-                  <Input
-                    {...field}
-                    id="password"
-                    type="password"
-                    aria-invalid={!!errors.password}
-                  />
-                )}
+              <Input
+                id="password"
+                type="password"
+                placeholder="Enter your password"
+                {...register("password")}
               />
               {errors.password && (
-                <p className="text-sm text-red-500">
+                <p className="text-sm text-destructive">
                   {errors.password.message}
                 </p>
               )}
             </div>
             {errors.root && (
-              <div className="text-sm text-red-500">{errors.root.message}</div>
+              <div className="text-sm text-destructive text-center">
+                {errors.root.message}
+              </div>
             )}
           </CardContent>
-          <CardFooter className="mt-4">
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? "Signing in..." : "Sign In"}
+          <CardFooter>
+            <Button 
+              type="submit" 
+              className="w-full" 
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Signing in..." : "Sign in"}
             </Button>
           </CardFooter>
         </form>

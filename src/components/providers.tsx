@@ -3,8 +3,21 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { AuthProvider } from "@/contexts/auth-context";
-import { useState, useEffect, useMemo } from "react";
-import { configureAmplify } from "@/lib/amplify";
+import { LoaderProvider } from "@/contexts/loader-context";
+import { SidebarProvider } from "@/contexts/sidebar-context";
+import { useState } from "react";
+import { ErrorBoundary } from "react-error-boundary";
+
+function ErrorFallback({ error }: { error: Error }) {
+  return (
+    <div className="flex min-h-screen items-center justify-center">
+      <div className="text-center">
+        <h2 className="text-lg font-semibold">Something went wrong:</h2>
+        <pre className="mt-2 text-red-600">{error.message}</pre>
+      </div>
+    </div>
+  );
+}
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -18,22 +31,21 @@ export function Providers({ children }: { children: React.ReactNode }) {
             refetchOnWindowFocus: false,
           },
         },
-      }),
+      })
   );
 
-  useEffect(() => {
-    configureAmplify();
-  }, []);
-
-  const value = useMemo(
-    () => (
+  return (
+    <ErrorBoundary FallbackComponent={ErrorFallback}>
       <QueryClientProvider client={queryClient}>
-        <AuthProvider>{children}</AuthProvider>
-        <ReactQueryDevtools initialIsOpen={false} />
+        <LoaderProvider>
+          <AuthProvider>
+            <SidebarProvider>
+              {children}
+              <ReactQueryDevtools initialIsOpen={false} />
+            </SidebarProvider>
+          </AuthProvider>
+        </LoaderProvider>
       </QueryClientProvider>
-    ),
-    [queryClient, children],
+    </ErrorBoundary>
   );
-
-  return value;
 }

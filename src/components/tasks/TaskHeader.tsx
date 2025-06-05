@@ -1,7 +1,7 @@
 import { Task } from "@/types/task";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChartNoAxesGantt } from "lucide-react";
+import { BarChart2 } from "lucide-react";
 
 interface TaskHeaderProps {
   task: Task;
@@ -23,7 +23,7 @@ export function TaskHeader({ task }: TaskHeaderProps) {
   return (
     <Card className="shadow rounded-xl border border-gray-200 bg-white">
       <CardHeader className="bg-gray-50 border-b border-gray-200 rounded-t-xl px-6 py-4 flex flex-row items-center gap-2">
-        <ChartNoAxesGantt className="text-blue-600" />
+        <BarChart2 className="text-blue-600" />
         <CardTitle className="text-base font-semibold text-gray-800">
           Task overview
         </CardTitle>

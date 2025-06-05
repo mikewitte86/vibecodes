@@ -80,9 +80,7 @@ export default function ApplicationsPage() {
   );
 
   const total = safeData.body.pagination?.total || 0;
-  const hasMorePages = page * PER_PAGE < total;
-  const start = (page - 1) * PER_PAGE + 1;
-  const end = Math.min(page * PER_PAGE, totalCount);
+  const totalPages = Math.ceil(total / PER_PAGE);
 
   const handleAddApplication = async () => {
     setIsSubmitting(true);
@@ -102,7 +100,7 @@ export default function ApplicationsPage() {
           <p className="text-gray-500 text-sm mt-1">
             {totalCount > 0 && (
               <span className="mr-2">
-                {start}–{end} of {totalCount} applications shown
+                {((page - 1) * PER_PAGE) + 1}–{Math.min(page * PER_PAGE, totalCount)} of {totalCount} applications shown
               </span>
             )}
           </p>
@@ -157,14 +155,12 @@ export default function ApplicationsPage() {
           columns={applicationColumns}
           data={applications}
           isLoading={isLoading}
-          onPaginationChange={(token) => {
-            if (token) {
-              setPage(parseInt(token, 10));
-            }
+          pagination={{
+            pageIndex: page - 1,
+            pageSize: PER_PAGE,
+            pageCount: totalPages,
+            onPageChange: (newPage) => setPage(newPage + 1),
           }}
-          hasMorePages={hasMorePages}
-          nextPageToken={String(page + 1)}
-          prevPageToken={page > 1 ? String(page - 1) : undefined}
         />
       </div>
 

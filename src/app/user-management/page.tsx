@@ -17,9 +17,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Row, ColumnDef } from "@tanstack/react-table";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { User } from "@/types/api";
+import { User, UsersResponse } from "@/types/api";
 import { userApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
+
+const PER_PAGE = 15;
 
 const userRoles = [
   { name: "Super Admin", value: USER_ROLES_TYPES.SUPER_ADMIN },
@@ -37,12 +39,15 @@ export default function UserManagementPage() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [paginationToken, setPaginationToken] = useState<string | undefined>();
+  const [page, setPage] = useState(0);
   const queryClient = useQueryClient();
 
-  const { data, isLoading, refetch, isFetching } = useQuery({
-    queryKey: ["users", paginationToken],
-    queryFn: () => userApi.getUsers(paginationToken),
+  const { data, isLoading, refetch, isFetching } = useQuery<UsersResponse>({
+    queryKey: ["users", page],
+    queryFn: async () => {
+      const response = await userApi.getUsers(page > 0 ? data?.pagination_token : undefined);
+      return response;
+    },
   });
 
   const hasMorePages = !!data?.pagination_token;
@@ -164,7 +169,7 @@ export default function UserManagementPage() {
             variant="outline"
             size="sm"
             onClick={() => {
-              setPaginationToken(undefined);
+              setPage(0);
               refetch();
             }}
             disabled={isFetching}
@@ -183,8 +188,12 @@ export default function UserManagementPage() {
           columns={columns}
           data={data?.users || []}
           isLoading={isLoading}
-          hasMorePages={hasMorePages}
-          nextPageToken={data?.pagination_token}
+          pagination={{
+            pageIndex: page,
+            pageSize: PER_PAGE,
+            pageCount: hasMorePages ? page + 2 : page + 1,
+            onPageChange: (newPage) => setPage(newPage),
+          }}
         />
       </div>
 

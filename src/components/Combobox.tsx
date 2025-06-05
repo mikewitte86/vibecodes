@@ -34,7 +34,7 @@ export function Combobox({
     : options.filter((o) => o.label.toLowerCase().includes(query.toLowerCase()));
 
   return (
-    <HCombobox value={value} onChange={onChange}>
+    <HCombobox value={value} onChange={onChange} disabled={disabled}>
       <div className="relative">
         <div className="relative">
           <HCombobox.Input
@@ -43,7 +43,6 @@ export function Combobox({
             onChange={(e) => setQuery(e.target.value)}
             onClick={() => buttonRef.current?.click()}
             placeholder={placeholder}
-            disabled={disabled}
           />
           <HCombobox.Button 
             ref={buttonRef}

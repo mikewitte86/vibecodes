@@ -1,23 +1,22 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
-import {
-  signIn as amplifySignIn,
-  signOut as amplifySignOut,
-  getCurrentUser,
-  AuthUser,
-} from "aws-amplify/auth";
 import { useRouter, usePathname } from "next/navigation";
-import { configureAmplify } from "@/lib/amplify";
 import Cookies from "js-cookie";
 import { useLoader } from "@/contexts/loader-context";
+
+interface User {
+  id: string;
+  email: string;
+  name: string;
+}
 
 interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
-  signIn: (username: string, password: string, callbackUrl?: string) => Promise<void>;
+  signIn: (email: string, password: string, callbackUrl?: string) => Promise<void>;
   signOut: () => Promise<void>;
-  user: AuthUser | null;
+  user: User | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -26,42 +25,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<{
     isAuthenticated: boolean;
     isLoading: boolean;
-    user: AuthUser | null;
+    user: User | null;
   }>({
-    isAuthenticated: false,
-    isLoading: true,
-    user: null,
+    isAuthenticated: true, // Set to true by default for now
+    isLoading: false,
+    user: {
+      id: "1",
+      email: "user@example.com",
+      name: "Test User"
+    },
   });
 
   const router = useRouter();
   const pathname = usePathname();
   const { setShow } = useLoader();
 
-  useEffect(() => {
-    if (state.isLoading && pathname !== "/auth/signin") {
-      setShow(true);
-    } else {
-      setShow(false);
-    }
-  }, [state.isLoading, pathname, setShow]);
-
   const initAuth = useCallback(async () => {
     try {
-      configureAmplify();
-      const currentUser = await getCurrentUser();
+      const token = Cookies.get("auth-token");
+      
+      // For development, always consider authenticated
       setState({
         isAuthenticated: true,
         isLoading: false,
-        user: currentUser,
+        user: {
+          id: "1",
+          email: "user@example.com",
+          name: "Test User"
+        },
       });
-      Cookies.set("auth-token", "true", { expires: 7 });
-    } catch {
+
+    } catch (error) {
+      console.error("Auth initialization error:", error);
       setState({
-        isAuthenticated: false,
+        isAuthenticated: true, // Keep authenticated for development
         isLoading: false,
-        user: null,
+        user: {
+          id: "1",
+          email: "user@example.com",
+          name: "Test User"
+        },
       });
-      Cookies.remove("auth-token");
     }
   }, []);
 
@@ -69,16 +73,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initAuth();
   }, [initAuth]);
 
-  const signIn = useCallback(async (username: string, password: string, callbackUrl: string = "/") => {
+  const signIn = useCallback(async (email: string, password: string, callbackUrl: string = "/") => {
     try {
-      await amplifySignIn({ username, password });
-      const currentUser = await getCurrentUser();
+      const mockUser = {
+        id: "1",
+        email,
+        name: "Test User"
+      };
+
       setState({
         isAuthenticated: true,
         isLoading: false,
-        user: currentUser,
+        user: mockUser,
       });
-      Cookies.set("auth-token", "true", { expires: 7 });
+      
+      Cookies.set("auth-token", "mock-token", { expires: 7 });
       router.push(callbackUrl);
     } catch (error) {
       throw error;
@@ -86,18 +95,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [router]);
 
   const signOut = useCallback(async () => {
-    try {
-      await amplifySignOut();
-      setState({
-        isAuthenticated: false,
-        isLoading: false,
-        user: null,
-      });
-      Cookies.remove("auth-token");
-      router.push("/auth/signin");
-    } catch (error) {
-      throw error;
-    }
+    setState({
+      isAuthenticated: false,
+      isLoading: false,
+      user: null,
+    });
+    Cookies.remove("auth-token");
+    router.push("/auth/signin");
   }, [router]);
 
   const value = useMemo(
